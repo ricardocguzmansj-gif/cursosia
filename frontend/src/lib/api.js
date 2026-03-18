@@ -174,5 +174,132 @@ export const api = {
       .eq("course_id", courseId);
     if (error) throw error;
     return data?.length > 0;
-  }
+  },
+
+  // ========== GAMIFICATION ==========
+  awardXP: async (amount, reason, courseId = null) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase.rpc('award_xp', {
+      p_user_id: user.id,
+      p_amount: amount,
+      p_reason: reason,
+      p_course_id: courseId
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  getGamificationProfile: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("total_xp, current_streak, longest_streak, last_study_date, badges, onboarding_completed, full_name")
+      .eq("id", user.id)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  getBadgeDefinitions: async () => {
+    const { data, error } = await supabase
+      .from("badge_definitions")
+      .select("*");
+    if (error) throw error;
+    return data;
+  },
+
+  getLeaderboard: async (limit = 10) => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, full_name, total_xp, current_streak, badges")
+      .order("total_xp", { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return data;
+  },
+
+  setOnboardingCompleted: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from("profiles")
+      .update({ onboarding_completed: true })
+      .eq("id", user.id);
+    if (error) throw error;
+  },
+
+  // ========== REVIEWS ==========
+  submitReview: async (courseId, rating, comment) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from("course_reviews")
+      .upsert({
+        user_id: user.id,
+        course_id: courseId,
+        rating,
+        comment
+      }, { onConflict: 'user_id,course_id' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  getCourseReviews: async (courseId) => {
+    const { data, error } = await supabase
+      .from("course_reviews")
+      .select("*, profiles(full_name)")
+      .eq("course_id", courseId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
+  // ========== LEARNING PATHS ==========
+  getLearningPaths: async () => {
+    const { data, error } = await supabase
+      .from("learning_paths")
+      .select("*, learning_path_courses(course_id, position, courses(id, title, level))")
+      .eq("is_published", true)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
+  // ========== CERTIFICATES ==========
+  requestCertificate: async (courseId) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(EDGE_FUNCTION_URL + "/generate-certificate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + session.access_token
+      },
+      body: JSON.stringify({ course_id: courseId })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Error generando certificado");
+    return data;
+  },
+
+  // ========== EXPORT ==========
+  exportCoursePDF: async (courseId) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(EDGE_FUNCTION_URL + "/export-pdf", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + session.access_token
+      },
+      body: JSON.stringify({ course_id: courseId })
+    });
+    if (!res.ok) throw new Error("Error exportando");
+    const html = await res.text();
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "curso.html";
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 };

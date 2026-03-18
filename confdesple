@@ -2,3 +2,78 @@ Git: ridosol66 (ricardocguzman@gmail.com
 )
 supabase: ricardocguzmansj@gmail.com
 cloudflare: idem
+
+
+🔍 Auditoría Competitiva — CursosIA vs Industria
+Plataformas Analizadas
+Plataforma	Modelo	Diferenciador
+Coursera	B2C/B2B, subscripción	Universidades, grados, Coach IA
+Udemy	Marketplace, instructores	250K+ cursos, microlearning IA
+Hotmart	Creadores, afiliados	Pagos globales, ecosistema digital
+Teachable	SaaS para creadores	UX simple, AI Course Starter
+Thinkific	SaaS white-label	Comunidades, apps, bundles
+Disco	Social learning + IA	Gamificación adaptativa, feeds
+Matriz de Features: CursosIA vs Competencia
+Feature	CursosIA	Coursera	Udemy	Hotmart	Teachable	Thinkific
+Generación IA de cursos	✅ Único	❌	❌	❌	⚠️ Parcial	❌
+Tutor IA contextual	✅ Único	✅ Coach	❌	❌	❌	❌
+Google Grounding (fuentes reales)	✅ Único	❌	❌	❌	❌	❌
+Multi-idioma automático	✅	✅	✅	✅	✅	✅
+Dark / Light mode	✅	❌	❌	❌	❌	❌
+Certificados verificables	✅	✅	✅	❌	✅	✅
+Sistema de afiliados	✅	❌	❌	✅	✅	❌
+Analytics / KPIs	✅	✅	✅	✅	✅	✅
+Multi-tenant / White label	✅	❌	❌	❌	❌	✅
+Exportar PDF	✅	❌	❌	❌	✅	❌
+Gamificación	❌	⚠️	⚠️	❌	❌	❌
+Videos / multimedia	❌	✅	✅	✅	✅	✅
+Foros / comunidad	❌	✅	✅	✅	✅	✅
+Email transaccional	❌	✅	✅	✅	✅	✅
+Notificaciones push	❌	✅	✅	❌	❌	✅
+Onboarding guiado	❌	✅	❌	✅	✅	✅
+Reviews / ratings	❌	✅	✅	✅	❌	❌
+Streaks / rachas diarias	❌	✅	❌	❌	❌	❌
+Mobile app nativa	❌	✅	✅	✅	✅	✅
+Learning paths / rutas	❌	✅	✅	❌	✅	✅
+Microlearning (lecciones cortas)	⚠️	❌	✅	❌	❌	❌
+Cohort-based / live classes	❌	✅	❌	❌	✅	✅
+SCORM export	❌	❌	❌	❌	❌	✅
+🚀 Top 15 Mejoras Priorizadas (Impacto × Factibilidad)
+🔴 Impacto Alto — IMPLEMENTAR PRIMERO
+#	Feature	Impacto	Esfuerzo	Descripción
+1	🎮 Gamificación: XP + Badges + Streaks	🔥🔥🔥	3-5 días	Puntos XP por lección completada, rachas diarias (tipo Duolingo), badges por hitos. Aumenta retención 40-60%.
+2	📧 Emails transaccionales	🔥🔥🔥	1-2 días	Bienvenida, progreso semanal, certificado, recordatorio de inactividad. Usa Resend o Supabase Auth hooks.
+3	🎥 Soporte para videos en lecciones	🔥🔥🔥	2-3 días	Embed YouTube/Vimeo en lecciones. La IA puede sugerir videos relevantes. Aumenta engagement masivamente.
+4	🗺️ Learning Paths (rutas de estudio)	🔥🔥	2-3 días	Agrupar cursos en rutas: "Ruta Full Stack", "Ruta Marketing Digital". Con progreso acumulado.
+5	👋 Onboarding guiado (tour)	🔥🔥	1 día	Tour interactivo con tooltips al primer login. Muestra cómo generar, ver cursos, usar el tutor. Reduce abandono.
+🟡 Impacto Medio — SEMANA 2
+#	Feature	Impacto	Esfuerzo	Descripción
+6	⭐ Reviews y ratings	🔥🔥	1-2 días	Estrellas + comentario en cursos publicados. Social proof para el catálogo.
+7	💬 Foro / Comunidad por curso	🔥🔥	3-4 días	Discusión por lección (tipo Coursera). Los alumnos preguntan, el dueño o la IA responde.
+8	🔔 Notificaciones in-app	🔥	1-2 días	Centro de notificaciones: "Nuevo curso publicado", "Tu certificado está listo", "Venta de afiliado".
+9	📱 PWA (Progressive Web App)	🔥🔥	1 día	Agregar manifest.json + service worker. El sitio se instala como app en Android/iOS.
+10	🏆 Leaderboard (tabla de posiciones)	🔥	1-2 días	Ranking por XP entre estudiantes de un mismo curso o global. Competencia sana.
+🟢 Impacto Diferenciador — SEMANA 3+
+#	Feature	Impacto	Esfuerzo	Descripción
+11	🧠 Evaluaciones adaptativas	🔥🔥	3-4 días	Quizzes que se adaptan según las respuestas del alumno (más fácil si falla, más difícil si acierta).
+12	📊 Dashboard alumno mejorado	🔥	2 días	Stats personales: tiempo estudiado, streak actual, badges ganados, cursos en progreso.
+13	🔗 Compartir certificado en LinkedIn	🔥🔥	0.5 días	Botón "Compartir en LinkedIn" en la página de certificado. Viralidad gratuita.
+14	📑 SCORM Export	🔥	3-5 días	Exportar curso como paquete SCORM para LMS corporativos (Moodle, SAP, etc.).
+15	🎙️ Audio de lecciones (TTS)	🔥🔥	2-3 días	Generar audio de cada lección con Text-to-Speech (Google TTS). Aprender mientras caminas.
+Ventajas Competitivas de CursosIA (Ya Implementadas)
+IMPORTANT
+
+Estas 3 features son únicas y ningún competidor las tiene combinadas:
+
+Ventaja	Descripción
+🤖 Generación IA total	Un curso completo en 1 minuto — ninguna plataforma lo hace
+🔬 Google Search Grounding	Fuentes reales verificables, no contenido inventado
+💬 Tutor IA contextual	Chat dentro de cada lección con contexto real
+Recomendación de Roadmap Inmediato
+Semana 1: Gamificación (XP + Streaks + Badges) + Emails + Videos embed
+Semana 2: Learning Paths + Onboarding + Reviews + PWA
+Semana 3: Foro/Comunidad + Evaluaciones adaptativas + LinkedIn share
+Semana 4: Dashboard alumno + SCORM + Audio TTS
+TIP
+
+La gamificación es la mejora con mayor ROI comprobado. Duolingo aumentó su retención 60% solo con streaks y XP. Es la prioridad #1.

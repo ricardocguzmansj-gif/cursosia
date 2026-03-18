@@ -2,11 +2,14 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useTranslation } from "react-i18next";
+import GamificationBar from "../components/GamificationBar";
+import OnboardingTour from "../components/OnboardingTour";
 
 export default function Dashboard() {
   const [courses, setCourses] = useState([]);
   const [progressMap, setProgressMap] = useState({});
   const [loading, setLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
@@ -30,6 +33,12 @@ export default function Dashboard() {
         })
       );
       setProgressMap(progMap);
+
+      // Check onboarding
+      try {
+        const gProfile = await api.getGamificationProfile();
+        if (!gProfile.onboarding_completed) setShowOnboarding(true);
+      } catch {}
     } catch (err) {
       console.error(err);
     } finally {
@@ -101,6 +110,9 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard fade-in">
+      {showOnboarding && <OnboardingTour onComplete={() => setShowOnboarding(false)} />}
+      <GamificationBar />
+
       <div className="dashboard-header">
         <h1>{t('dashboard_title')}</h1>
         <Link to="/generate" className="btn btn-primary">

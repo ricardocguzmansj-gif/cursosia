@@ -274,6 +274,8 @@ function LessonView({ curso, currentUnit, currentLesson, courseId, isLessonCompl
           completed: true,
           score: null
         }]);
+        // Award XP for completing a lesson
+        api.awardXP(10, 'lesson_completed', courseId).catch(() => {});
       })
       .catch(err => console.error('Error saving progress:', err));
   }, [currentUnit, currentLesson]);
