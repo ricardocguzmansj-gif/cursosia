@@ -79,6 +79,7 @@ export default function Navbar() {
             <Link to="/dashboard" className="nav-item">🏠 {t("nav_dashboard", "Dashboard")}</Link>
             {isAdmin && <Link to="/generate" className="nav-item">✨ {t("nav_generate", "Generar")}</Link>}
             <Link to="/catalog" className="nav-item">📚 {t("nav_catalog", "Catálogo")}</Link>
+            <Link to="/jobs" className="nav-item" title="Bolsa de Trabajo">💼</Link>
             <Link to="/leaderboard" className="nav-item" title="Ranking">🏆</Link>
             <Link to="/analytics" className="nav-item" title="Estadísticas">📊</Link>
             <Link to="/affiliates" className="nav-item" title="Afiliados">🤝</Link>
@@ -89,6 +90,7 @@ export default function Navbar() {
         ) : (
           <>
             <Link to="/catalog" className="nav-item">📚 {t("nav_catalog", "Catálogo")}</Link>
+            <Link to="/jobs" className="nav-item">💼 Empleos</Link>
             <Link to="/login" className="nav-item">🔑 {t("nav_login", "Iniciar Sesión")}</Link>
             <Link to="/register" className="nav-item btn btn-primary" style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}>
               {t("nav_register", "Crear Cuenta")}

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
+import toast from "react-hot-toast";
+import { parseCourseContent } from "../lib/courseHelper";
 import { api } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import TutorChat from "../components/TutorChat";
@@ -13,7 +15,6 @@ import { exportScorm12 } from "../lib/ScormExport";
 
 export default function CourseView() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [course, setCourse] = useState(null);
   const [progress, setProgress] = useState([]);
   const [currentUnit, setCurrentUnit] = useState(-1);
@@ -27,9 +28,9 @@ export default function CourseView() {
   const initialUnit = searchParams.get('u');
   const initialLesson = searchParams.get('l');
 
-  useEffect(() => { loadCourse(); }, [id]);
+  useEffect(() => { loadCourseData(); }, [id]);
 
-  const loadCourse = async () => {
+  const loadCourseData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No autenticado");
@@ -57,7 +58,7 @@ export default function CourseView() {
       }
     } catch (err) {
       console.error(err);
-      navigate("/dashboard");
+      toast.error("Error cargando el curso. Por favor, intenta de nuevo.");
     } finally {
       setLoading(false);
     }
@@ -75,7 +76,7 @@ export default function CourseView() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const curso = course?.content?.curso || course?.content;
+  const curso = parseCourseContent(course);
   const unidades = curso?.unidades || [];
 
   const goNext = () => {
@@ -229,6 +230,7 @@ export default function CourseView() {
             courseId={id} 
             enrollment={enrollment} 
             setEnrollment={setEnrollment}
+            loadCourseData={loadCourseData}
           />
         )}
       </main>
@@ -252,42 +254,6 @@ function CourseOverview({ curso, course, onStart, hasProgress }) {
         </div>
       </div>
 
-      {/* AI Tutor Premium Section */}
-      <div className="ai-tutor-section glass">
-        {course.is_ai_video_enabled ? (
-          <div className="ai-tutor-player">
-            <h3>👨‍🏫 Tu Profesor IA</h3>
-            {course.intro_video_url ? (
-              <VideoPlayer url={course.intro_video_url} />
-            ) : (
-              <div className="video-generating-placeholder">
-                <p>⏳ El profesor está preparando su clase magistral personalizada para ti...</p>
-                <div className="loading-spinner-sm"></div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="ai-tutor-promo">
-            <div className="promo-content">
-              <h3>💎 Desbloquea tu Tutor IA Personalizado</h3>
-              <p>¿Quieres que un profesor IA te dicte este curso? Por un pago único de 9.99 USD, generaremos videos de un avatar humano explicando cada lección solo para ti.</p>
-              <button 
-                className="btn btn-accent"
-                onClick={async () => {
-                  if (window.confirm("¿Quieres desbloquear el Tutor IA para este curso? (Simulación de pago)")) {
-                    try {
-                      await api.upgradeToAIVideo(course.id);
-                      window.location.reload();
-                    } catch (e) { alert("Error al procesar el pago"); }
-                  }
-                }}
-              >
-                🚀 Desbloquear Tutor IA
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* Learning Objectives */}
       {curso.objetivos_aprendizaje && curso.objetivos_aprendizaje.length > 0 && (
@@ -451,7 +417,7 @@ function LessonView({ curso, currentUnit, currentLesson, courseId, isLessonCompl
 }
 
 // ==================== FINAL SECTIONS ====================
-function FinalSections({ curso, goPrev, courseId, enrollment, setEnrollment }) {
+function FinalSections({ curso, goPrev, courseId, enrollment, setEnrollment, loadCourseData }) {
   const [evalAnswers, setEvalAnswers] = useState({});
   const [evalSubmitted, setEvalSubmitted] = useState(enrollment?.final_score > 0);
   const [repasoLoading, setRepasoLoading] = useState(false);
@@ -474,9 +440,10 @@ function FinalSections({ curso, goPrev, courseId, enrollment, setEnrollment }) {
       setEvalSubmitted(true);
       // Award XP for completing the final exam
       api.awardXP(100, 'final_exam_completed', courseId).catch(() => {});
-    } catch (err) {
-      console.error("Error saving final score:", err);
-      alert("Error al guardar la calificación final");
+      toast.success("Curso completado. Calificación guardada.");
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al guardar la calificación final");
     }
   };
 
@@ -555,9 +522,10 @@ function FinalSections({ curso, goPrev, courseId, enrollment, setEnrollment }) {
                       setCertRequestLoading(true);
                       try {
                         await api.requestCertificate(courseId);
-                        alert("¡Certificado emitido con éxito! Lo encontrarás en tu sección de Logros.");
+                        toast.success("¡Certificado emitido con éxito! Lo encontrarás en tu sección de Logros.");
+                        loadCourseData(); // Reload to fetch cert
                       } catch (e) {
-                        alert(e.message);
+                        toast.error(e.message);
                       } finally { setCertRequestLoading(false); }
                     }}
                     disabled={certRequestLoading}
@@ -631,16 +599,16 @@ function FinalSections({ curso, goPrev, courseId, enrollment, setEnrollment }) {
             <button 
               className="btn btn-secondary"
               onClick={async () => {
-                if (window.confirm("¿Deseas pagar $20 USD por el Certificado de Aprobación Oficial? (Simulación)")) {
-                  try {
-                    await api.updateCertificatePayment(courseId, true);
-                    alert("¡Pago registrado! El certificado ha sido habilitado.");
-                    window.location.reload();
-                  } catch (e) { alert("Error al procesar el pago"); }
-                }
+                try {
+                  const data = await api.createPayment(courseId, 'certificate');
+                  toast.success("Cargando MercadoPago...");
+                  setTimeout(() => {
+                    window.location.href = data.init_point;
+                  }, 1000);
+                } catch (e) { toast.error(e.message || "Error al procesar el pago"); }
               }}
             >
-              Obtener Certificado Oficial ($20)
+              💳 Obtener Certificado Oficial ($20 USD)
             </button>
             <LinkedInShare title={curso.title || curso.titulo} summary={curso.descripcion_corta || curso.descripcion} />
           </div>

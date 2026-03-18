@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+import { parseCourseContent } from "../lib/courseHelper";
 import { api } from "../lib/api";
 import { useTranslation } from "react-i18next";
 import GamificationBar from "../components/GamificationBar";
@@ -50,32 +52,49 @@ export default function Dashboard() {
     }
   };
 
-  const handleDelete = async (e, id) => {
+  const handleDelete = async (e, courseId) => {
     e.stopPropagation();
-    if (!window.confirm(t('dash_delete_prompt', '¿Eliminar este curso?'))) return;
-    try {
-      await api.deleteCourse(id);
-      setData(prev => ({
-        ...prev,
-        enrollments: prev.enrollments.filter(en => en.course_id !== id)
-      }));
-    } catch { alert(t('dash_delete_error', 'Error eliminando el curso')); }
+    toast((t_toast) => (
+      <div>
+        <p>{t('dash_delete_prompt', '¿Eliminar este curso?')}</p>
+        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+          <button className="btn btn-sm btn-accent" onClick={async () => {
+            toast.dismiss(t_toast.id);
+            try {
+              await api.deleteCourse(courseId);
+              setData(prev => ({
+                ...prev,
+                enrollments: prev.enrollments.filter(en => en.course_id !== courseId)
+              }));
+              toast.success(t('dash_delete_success', 'Curso eliminado'));
+            } catch { toast.error(t('dash_delete_error', 'Error eliminando el curso')); }
+          }}>Confirmar</button>
+          <button className="btn btn-sm" onClick={() => toast.dismiss(t_toast.id)}>Cancelar</button>
+        </div>
+      </div>
+    ), { duration: Infinity });
   };
 
   const handlePublish = async (e, course) => {
     e.stopPropagation();
     try {
       const slug = course.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      if (course.is_published) {
-        await api.unpublishCourse(course.id);
-        loadDashboard(); // Reload to update UI
-      } else {
+      const newStatus = !course.is_published;
+      if (newStatus) {
         await api.publishCourse(course.id, slug + '-' + course.id.slice(0, 8));
-        loadDashboard();
+      } else {
+        await api.unpublishCourse(course.id);
       }
+      setData(prev => ({
+        ...prev,
+        enrollments: prev.enrollments.map(en => 
+          en.course_id === course.id ? { ...en, courses: { ...en.courses, is_published: newStatus } } : en
+        )
+      }));
+      toast.success('Visibilidad actualizada');
     } catch (err) {
       console.error(err);
-      alert('Error al cambiar visibilidad');
+      toast.error('Error al cambiar visibilidad');
     }
   };
 
@@ -91,22 +110,36 @@ export default function Dashboard() {
   
   const coursesWithProgress = enrollments.map(en => {
     const course = en.courses;
-    const courseContent = course.content?.curso || course.content;
+    const courseContent = parseCourseContent(course);
     let totalInCourse = 0;
     courseContent.unidades?.forEach(u => {
       totalInCourse += u.lecciones?.length || 0;
     });
     const completedInCourse = progress.filter(p => p.course_id === course.id).length;
     const percent = totalInCourse > 0 ? Math.round((completedInCourse / totalInCourse) * 100) : 0;
-    return { ...course, percent, totalInCourse, completedInCourse, is_owner: en.is_owner }; // Assuming is_owner exists or derived
+    const isOwner = en.source === 'free' && course.user_id === profile.id;
+    return { ...course, percent, totalInCourse, completedInCourse, isOwner };
   });
 
-  // Mock Activity
-  const activityData = [
-    { day: "Lun", value: 30 }, { day: "Mar", value: 45 }, { day: "Mie", value: 15 },
-    { day: "Jue", value: 60 }, { day: "Vie", value: 75 }, { day: "Sab", value: 20 }, { day: "Dom", value: 10 },
-  ];
-  const maxActivity = Math.max(...activityData.map(d => d.value));
+  // Real Activity: compute from progress completed_at dates (last 7 days)
+  const dayNames = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
+  const activityMap = {};
+  dayNames.forEach(d => activityMap[d] = 0);
+  
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  
+  (progress || []).forEach(p => {
+    if (!p.completed_at) return;
+    const date = new Date(p.completed_at);
+    if (date >= weekAgo) {
+      const dayKey = dayNames[date.getDay()];
+      activityMap[dayKey] = (activityMap[dayKey] || 0) + 10; // 10 XP per lesson
+    }
+  });
+
+  const activityData = dayNames.map(day => ({ day, value: activityMap[day] || 0 }));
+  const maxActivity = Math.max(...activityData.map(d => d.value), 1);
 
   return (
     <div className="dashboard-page fade-in">
@@ -188,7 +221,8 @@ export default function Dashboard() {
                           <button className="btn btn-accent btn-sm" onClick={(e) => handleContinue(e, c.id)}>
                             {c.percent > 0 ? "Continuar" : "Empezar"}
                           </button>
-                          {/* Options for course management (creator view) */}
+                          {/* Only show management buttons for course creators */}
+                          {c.isOwner && (
                           <div className="creator-actions">
                             <button className="btn-icon" title="Visibilidad" onClick={(e) => handlePublish(e, c)}>
                               {c.is_published ? "🌍" : "🔒"}
@@ -197,6 +231,7 @@ export default function Dashboard() {
                               🗑️
                             </button>
                           </div>
+                          )}
                         </div>
                       </div>
                     </div>

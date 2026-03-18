@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
+import toast from "react-hot-toast";
 
 export default function Register() {
   const [fullName, setFullName] = useState("");
@@ -75,7 +76,7 @@ export default function Register() {
         localStorage.setItem("access_token", data.session.access_token);
         navigate("/dashboard");
       } else {
-        alert(t('register_success_msg', '¡Cuenta creada! Revisa tu email.'));
+        toast.success(t('register_success_msg', '¡Cuenta creada! Revisa tu email.'), { duration: 6000 });
         navigate("/login");
       }
     } catch (err) {

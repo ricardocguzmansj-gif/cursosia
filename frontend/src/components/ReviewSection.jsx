@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { api } from "../lib/api";
+import toast from "react-hot-toast";
 
 export default function ReviewSection({ courseId }) {
   const [reviews, setReviews] = useState([]);
@@ -28,7 +29,7 @@ export default function ReviewSection({ courseId }) {
       await api.awardXP(15, 'review_submitted', courseId);
       loadReviews();
     } catch (err) {
-      alert("Error al enviar reseña");
+      toast.error("Error al enviar reseña");
     } finally {
       setSubmitting(false);
     }

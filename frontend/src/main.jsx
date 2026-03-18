@@ -5,6 +5,7 @@ import { supabase } from "./lib/supabase";
 import { api } from "./lib/api";
 import "./index.css";
 import "./i18n"; // Import i18n config
+import { Toaster } from 'react-hot-toast';
 
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -21,6 +22,8 @@ const Analytics = React.lazy(() => import("./pages/Analytics"));
 const AffiliateDashboard = React.lazy(() => import("./pages/AffiliateDashboard"));
 const Leaderboard = React.lazy(() => import("./pages/Leaderboard"));
 const AdminPanel = React.lazy(() => import("./pages/AdminPanel"));
+const PaymentResult = React.lazy(() => import("./pages/PaymentResult"));
+const JobBoard = React.lazy(() => import("./pages/JobBoard"));
 
 function ProtectedRoute({ session, children }) {
   if (!session) return <Navigate to="/login" replace />;
@@ -154,7 +157,25 @@ function App() {
             </AppLayout>
           }
         />
+        <Route
+          path="/jobs"
+          element={
+            <AppLayout>
+              <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+                <JobBoard />
+              </React.Suspense>
+            </AppLayout>
+          }
+        />
         {/* Analytics & Affiliates (protected) */}
+        <Route
+          path="/payment/result"
+          element={
+            <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+              <PaymentResult />
+            </React.Suspense>
+          }
+        />
         <Route
           path="/analytics"
           element={
@@ -192,6 +213,13 @@ function App() {
           }
         />
       </Routes>
+      <Toaster position="top-center" toastOptions={{
+        style: {
+          background: '#1a1a2e',
+          color: '#e0e0e0',
+          border: '1px solid rgba(255,255,255,0.1)'
+        }
+      }} />
     </BrowserRouter>
     </TenantProvider>
   );

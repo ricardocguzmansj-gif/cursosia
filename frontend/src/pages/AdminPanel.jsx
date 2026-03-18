@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useTranslation } from "react-i18next";
+import toast from "react-hot-toast";
 
 export default function AdminPanel() {
   const [tab, setTab] = useState("dashboard");
@@ -40,30 +41,52 @@ export default function AdminPanel() {
 
   const handleToggleUserStatus = async (userId, currentBlocked) => {
     const action = currentBlocked ? "desbloquear" : "bloquear";
-    if (!window.confirm(`¿Estás seguro de ${action} este usuario?`)) return;
-    setActionLoading(userId);
-    try {
-      await api.adminToggleUserStatus(userId, !currentBlocked);
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_blocked: !currentBlocked } : u));
-    } catch (err) {
-      alert(err.message || "Error al cambiar estado");
-    } finally {
-      setActionLoading(null);
-    }
+    toast((t_toast) => (
+      <div>
+        <p>¿Estás seguro de {action} este usuario?</p>
+        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+          <button className="btn btn-accent btn-sm" onClick={async () => {
+             toast.dismiss(t_toast.id);
+             setActionLoading(userId);
+             try {
+               await api.adminToggleUserStatus(userId, !currentBlocked);
+               setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_blocked: !currentBlocked } : u));
+               toast.success(`Usuario ${action === "bloquear" ? "bloqueado" : "desbloqueado"}`);
+             } catch (err) {
+               toast.error(err.message || "Error al cambiar estado");
+             } finally {
+               setActionLoading(null);
+             }
+          }}>Sí, {action}</button>
+          <button className="btn btn-sm" onClick={() => toast.dismiss(t_toast.id)}>Cancelar</button>
+        </div>
+      </div>
+    ), { duration: Infinity });
   };
 
   const handleRoleChange = async (userId, newRole, userName) => {
     const action = newRole === "admin" ? t("admin_promote", "promover a Admin") : t("admin_demote", "cambiar a Alumno");
-    if (!window.confirm(`¿Estás seguro de ${action} a ${userName}?`)) return;
-    setActionLoading(userId);
-    try {
-      await api.adminSetUserRole(userId, newRole);
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
-    } catch (err) {
-      alert(err.message || "Error al cambiar rol");
-    } finally {
-      setActionLoading(null);
-    }
+    toast((t_toast) => (
+      <div>
+        <p>¿Estás seguro de {action} a {userName}?</p>
+        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+          <button className="btn btn-accent btn-sm" onClick={async () => {
+             toast.dismiss(t_toast.id);
+             setActionLoading(userId);
+             try {
+               await api.adminSetUserRole(userId, newRole);
+               setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+               toast.success(`Rol actualizado a ${newRole}`);
+             } catch (err) {
+               toast.error(err.message || "Error al cambiar rol");
+             } finally {
+               setActionLoading(null);
+             }
+          }}>Sí, {action}</button>
+          <button className="btn btn-sm" onClick={() => toast.dismiss(t_toast.id)}>Cancelar</button>
+        </div>
+      </div>
+    ), { duration: Infinity });
   };
 
   const handleApproveCourse = async (courseId, currentApproved) => {
@@ -71,8 +94,9 @@ export default function AdminPanel() {
     try {
       await api.adminApproveCourse(courseId, !currentApproved);
       setCourses(prev => prev.map(c => c.id === courseId ? { ...c, is_approved: !currentApproved } : c));
+      toast.success(currentApproved ? "Curso desaprobado" : "Curso aprobado");
     } catch (err) {
-      alert(err.message || "Error al aprobar curso");
+      toast.error(err.message || "Error al aprobar curso");
     } finally {
       setActionLoading(null);
     }
@@ -83,8 +107,9 @@ export default function AdminPanel() {
     try {
       await api.adminToggleCourseStatus(courseId, !currentBlocked);
       setCourses(prev => prev.map(c => c.id === courseId ? { ...c, is_blocked: !currentBlocked } : c));
+      toast.success(currentBlocked ? "Curso activado" : "Curso bloqueado");
     } catch (err) {
-      alert(err.message || "Error al cambiar estado");
+      toast.error(err.message || "Error al cambiar estado");
     } finally {
       setActionLoading(null);
     }

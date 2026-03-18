@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
+import toast from "react-hot-toast";
 
 export default function AffiliateDashboard() {
   const [affiliates, setAffiliates] = useState([]);
@@ -45,7 +46,7 @@ export default function AffiliateDashboard() {
   const copyLink = (code) => {
     const url = `${window.location.origin}/catalog?ref=${code}`;
     navigator.clipboard.writeText(url);
-    alert("¡Link copiado!");
+    toast.success("¡Link copiado!");
   };
 
   if (loading) {

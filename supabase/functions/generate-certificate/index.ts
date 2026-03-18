@@ -129,6 +129,32 @@ Deno.serve(async (req: Request) => {
       metadata: { score: avgScore, verification_code: cert.verification_code },
     });
 
+    // Send certificate email notification
+    try {
+      await fetch(
+        `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-email`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: JSON.stringify({
+            to: user.email,
+            template: "certificate_issued",
+            data: {
+              name: profile?.full_name || user.email,
+              course_title: course.content?.curso?.titulo || course.title,
+              score: avgScore,
+              verification_code: cert.verification_code,
+            },
+          }),
+        }
+      );
+    } catch (emailErr) {
+      console.error("Email notification failed (non-blocking):", emailErr);
+    }
+
     return new Response(JSON.stringify({
       certificate: cert,
       student_name: profile?.full_name || user.email,

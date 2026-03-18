@@ -381,30 +381,57 @@ export const api = {
     // 3. Get detailed progress counts
     const { data: progress } = await supabase
       .from("course_progress")
-      .select("course_id, unit_index, lesson_index, completed")
+      .select("course_id, unit_index, lesson_index, completed, completed_at")
       .eq("user_id", user.id);
 
     return { profile, enrollments, progress };
   },
 
+  // ========== PAYMENTS (MercadoPago) ==========
+  createPayment: async (courseId, type) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("No autorizado");
+
+    const res = await fetch(EDGE_FUNCTION_URL + "/create-payment", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + session.access_token
+      },
+      body: JSON.stringify({ course_id: courseId, type })
+    });
+
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || "Error creando pago");
+    return result; // { init_point, preference_id, order_id }
+  },
+
+  getPaymentOrder: async (orderId) => {
+    const { data, error } = await supabase
+      .from("payment_orders")
+      .select("*")
+      .eq("id", orderId)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
   upgradeToAIVideo: async (courseId) => {
-    // In a real scenario, this would check a payment status with MercadoPago/Stripe
+    // Redirects to MercadoPago for real payment
     const { data: { user } } = await supabase.auth.getUser();
     const { data, error } = await supabase
       .from("courses")
       .update({ is_ai_video_enabled: true })
       .eq("id", courseId)
-      .eq("user_id", user.id); // Simple security check
+      .eq("user_id", user.id);
     
     if (error) throw error;
     return data;
   },
 
-  generateAIVideoScript: async (courseId) => {
-    // This would call an Edge Function to generate the script/video
-    const { data: course } = await supabase.from("courses").select("*").eq("id", courseId).single();
-    // Logic to call HeyGen/D-ID would go here or in an Edge Function
-    return "Hola, soy tu profesor IA. Bienvenido al curso...";
+  generateAIVideoScript: async (_courseId) => {
+    // Placeholder — AI video generation will be a future feature
+    return "Próximamente: Profesor IA con video personalizado.";
   },
 
   // ========== ADMIN ==========

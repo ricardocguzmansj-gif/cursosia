@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
 import { api } from "../lib/api";
 import { useTranslation } from "react-i18next";
+import toast from "react-hot-toast";
+import { parseCourseContent } from "../lib/courseHelper";
 
 // Helper: extract units from JSONB content
 function getCursoData(course) {
-  const c = course.content;
-  if (!c) return { unidades: [], totalLessons: 0 };
-  const curso = c.curso || c;
+  const curso = parseCourseContent(course);
   const unidades = curso.unidades || [];
   const totalLessons = unidades.reduce((acc, u) => acc + (u.lecciones?.length || 0), 0);
   return { unidades, totalLessons };
@@ -19,6 +20,7 @@ export default function Catalog() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({ level: "", search: "" });
   const [expandedId, setExpandedId] = useState(null);
+  const [myEnrollments, setMyEnrollments] = useState([]);
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -29,6 +31,12 @@ export default function Catalog() {
       const data = await api.getPublishedCourses();
       setCourses(data);
       setFiltered(data);
+      
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session) {
+        const enrolls = await api.getMyCourses();
+        setMyEnrollments(enrolls.map(e => e.course_id));
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -52,28 +60,45 @@ export default function Catalog() {
     setFiltered(result);
   }, [filter, courses]);
 
+  const [enrollLoading, setEnrollLoading] = useState(null);
+
+  const handleCardClick = (course) => {
+    if (myEnrollments.includes(course.id)) {
+      navigate(`/course/${course.id}`);
+    } else {
+      toast("Para ingresar, primero haz clic en 'Inscribirme'", { icon: "ℹ️" });
+    }
+  };
+
   const handleEnroll = async (e, course) => {
     e.stopPropagation();
+    setEnrollLoading(course.id);
     try {
       if (course.level === "Principiante" || course.level === "Beginner") {
         const canFree = await api.canEnrollFree();
         if (!canFree) {
-          alert("Límite alcanzado: El acceso gratuito al nivel Principiante es 1 curso por mes.\n\nPrueba con otro nivel o espera al próximo mes.");
+          toast.error("Límite alcanzado: El acceso gratuito al nivel Principiante es 1 curso por mes.\n\nPrueba con otro nivel o espera al próximo mes.", { duration: 5000 });
           return;
         }
         await api.enrollInCourse(course.id, 'free');
+        toast.success("Inscripción exitosa");
+        navigate(`/course/${course.id}`);
       } else {
-        // Enforce simulated payment for higher levels
-        if (window.confirm(`Este curso (${course.title}) tiene un costo de ${course.currency || "USD"} ${course.price || "49.99"}.\n\n¿Deseas simular el pago para inscribirte ahora?`)) {
-          await api.enrollInCourse(course.id, 'paid');
-        } else {
-          return; // cancel enrollment
-        }
+        // Real MercadoPago payment
+        const payment = await api.createPayment(course.id, 'course');
+        toast.success("Cargando MercadoPago...");
+        // Redirect to MercadoPago checkout
+        window.location.href = payment.init_point;
       }
-      navigate(`/course/${course.id}`);
     } catch (err) {
-      alert("Debes iniciar sesión para inscribirte.");
-      navigate("/login");
+      if (err.message?.includes("No autorizado")) {
+        toast.error("Debes iniciar sesión para inscribirte.");
+        navigate("/login");
+      } else {
+        toast.error(err.message || "Error al procesar el pago.");
+      }
+    } finally {
+      setEnrollLoading(null);
     }
   };
 
@@ -160,7 +185,7 @@ export default function Catalog() {
                       {/* Clickable body */}
                       <div
                         style={{ padding: "1.5rem", flex: 1 }}
-                        onClick={() => navigate(`/course/${course.id}`)}
+                        onClick={() => handleCardClick(course)}
                       >
                         {/* Badges */}
                         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
@@ -248,8 +273,11 @@ export default function Catalog() {
                           className="btn btn-primary"
                           style={{ width: "100%", fontSize: "0.95rem" }}
                           onClick={(e) => handleEnroll(e, course)}
+                          disabled={enrollLoading === course.id}
                         >
-                          🚀 {isFree ? "Empezar Gratis" : "Inscribirme Ahora"}
+                          {enrollLoading === course.id
+                            ? "⏳ Procesando..."
+                            : `🚀 ${isFree ? "Empezar Gratis" : "Inscribirme Ahora"}`}
                         </button>
                       </div>
                     </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import LinkedInShare from "../components/LinkedInShare";
+import { parseCourseContent } from "../lib/courseHelper";
 
 export default function Certificate() {
   const { code } = useParams();
@@ -54,7 +55,8 @@ export default function Certificate() {
     );
   }
 
-  const courseTitle = cert.courses?.content?.curso?.titulo || cert.courses?.title || "Curso";
+  const curso = parseCourseContent(cert.courses);
+  const courseTitle = curso?.titulo || cert.courses?.title || "Curso";
   const studentName = cert.profiles?.full_name || "Estudiante";
   const issuedDate = new Date(cert.issued_at).toLocaleDateString("es", {
     day: "numeric", month: "long", year: "numeric"

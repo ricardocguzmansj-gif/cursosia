@@ -130,9 +130,9 @@ export default function Landing() {
               <li>{t('pricing_pro_4')}</li>
               <li>{t('pricing_pro_5')}</li>
             </ul>
-            <a href="#" className="btn btn-primary" onClick={(e) => { e.preventDefault(); alert(t('pricing_pro_alert')); }} style={{ width: "100%" }}>
+            <Link to="/register" className="btn btn-primary" style={{ width: "100%" }}>
               {t('pricing_pro_cta')}
-            </a>
+            </Link>
           </div>
         </div>
       </section>
