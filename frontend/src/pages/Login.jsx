@@ -51,7 +51,7 @@ export default function Login() {
             />
           </div>
 
-          <div className="form-group">
+          <div className="form-group" style={{ marginBottom: "0.5rem" }}>
             <label>Contraseña</label>
             <input
               type="password"
@@ -60,6 +60,10 @@ export default function Login() {
               placeholder="••••••••"
               required
             />
+          </div>
+
+          <div style={{ textAlign: "right", marginBottom: "1.5rem", fontSize: "0.85rem" }}>
+            <a href="#" className="text-muted" onClick={(e) => { e.preventDefault(); alert("Funcionalidad próximamente disponible."); }}>¿Olvidaste tu contraseña?</a>
           </div>
 
           <button className="btn btn-primary btn-lg" disabled={loading} style={{ width: "100%" }}>

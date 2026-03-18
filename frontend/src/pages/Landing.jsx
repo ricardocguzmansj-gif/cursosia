@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 export default function Landing() {
   return (
-    <>
+    <main>
       {/* Navbar */}
       <nav className="navbar">
         <span className="navbar-brand">CursosIA</span>
@@ -135,9 +135,9 @@ export default function Landing() {
               <li>Certificados descargables</li>
               <li>Soporte prioritario</li>
             </ul>
-            <Link to="/register" className="btn btn-primary" style={{ width: "100%" }}>
+            <a href="#" className="btn btn-primary" onClick={(e) => { e.preventDefault(); alert("Planes Pro próximamente disponibles."); }} style={{ width: "100%" }}>
               Comenzar Pro
-            </Link>
+            </a>
           </div>
         </div>
       </section>
@@ -146,6 +146,6 @@ export default function Landing() {
       <footer className="footer">
         <p>© {new Date().getFullYear()} CursosIA — Plataforma educativa potenciada por IA</p>
       </footer>
-    </>
+    </main>
   );
 }

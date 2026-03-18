@@ -31,6 +31,7 @@ export default function Register() {
         navigate("/dashboard");
       } else {
         // Email confirmation required
+        alert("¡Cuenta creada exitosamente! Por favor, revisá tu bandeja de entrada para confirmar tu email antes de iniciar sesión.");
         navigate("/login");
       }
     } catch (err) {

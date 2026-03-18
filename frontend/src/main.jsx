@@ -9,8 +9,9 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import GenerateCourse from "./pages/GenerateCourse";
-import CourseView from "./pages/CourseView";
 import Navbar from "./components/Navbar";
+
+const CourseView = React.lazy(() => import("./pages/CourseView"));
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("access_token");
@@ -72,7 +73,9 @@ function App() {
           element={
             <ProtectedRoute>
               <AppLayout>
-                <CourseView />
+                <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+                  <CourseView />
+                </React.Suspense>
               </AppLayout>
             </ProtectedRoute>
           }

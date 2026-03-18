@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+# Disallow: /dashboard # Optional: hide app screens if preferred
+Sitemap: https://cursosia.digitalsaasfactory.com/sitemap.xml
