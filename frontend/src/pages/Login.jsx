@@ -8,6 +8,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -86,14 +87,24 @@ export default function Login() {
 
           <div className="form-group" style={{ marginBottom: "0.5rem" }}>
             <label>{t('login_password')}</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              autoComplete="current-password"
-              required
-            />
+            <div className="password-wrapper">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
           </div>
 
           <div style={{ textAlign: "right", marginBottom: "1.5rem", fontSize: "0.85rem" }}>

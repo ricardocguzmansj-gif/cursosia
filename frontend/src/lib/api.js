@@ -359,6 +359,40 @@ export const api = {
     const { data: course } = await supabase.from("courses").select("*").eq("id", courseId).single();
     // Logic to call HeyGen/D-ID would go here or in an Edge Function
     return "Hola, soy tu profesor IA. Bienvenido al curso...";
+  },
+
+  // ========== ADMIN ==========
+  getUserRole: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    if (error) return null;
+    return data?.role || 'alumno';
+  },
+
+  adminListUsers: async () => {
+    const { data, error } = await supabase.rpc('admin_list_users');
+    if (error) throw error;
+    return data;
+  },
+
+  adminSetUserRole: async (targetUserId, newRole) => {
+    const { data, error } = await supabase.rpc('admin_set_user_role', {
+      target_user_id: targetUserId,
+      new_role: newRole
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  adminGetStats: async () => {
+    const { data, error } = await supabase.rpc('admin_platform_stats');
+    if (error) throw error;
+    return data;
   }
 };
 

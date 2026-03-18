@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "./lib/supabase";
+import { api } from "./lib/api";
 import "./index.css";
 import "./i18n"; // Import i18n config
 
@@ -19,11 +20,25 @@ const Catalog = React.lazy(() => import("./pages/Catalog"));
 const Analytics = React.lazy(() => import("./pages/Analytics"));
 const AffiliateDashboard = React.lazy(() => import("./pages/AffiliateDashboard"));
 const Leaderboard = React.lazy(() => import("./pages/Leaderboard"));
+const AdminPanel = React.lazy(() => import("./pages/AdminPanel"));
 
 function ProtectedRoute({ session, children }) {
-  // Wait for session to be defined (handled by App's loading state)
-  // If no session after loading, redirect to login
   if (!session) return <Navigate to="/login" replace />;
+  return children;
+}
+
+function AdminRoute({ session, children }) {
+  const [role, setRole] = useState(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    if (!session) { setChecking(false); return; }
+    api.getUserRole().then(r => { setRole(r); setChecking(false); });
+  }, [session]);
+
+  if (!session) return <Navigate to="/login" replace />;
+  if (checking) return <div className="loading-screen"><div className="loading-spinner"></div></div>;
+  if (role !== "admin") return <Navigate to="/dashboard" replace />;
   return children;
 }
 
@@ -89,11 +104,23 @@ function App() {
         <Route
           path="/generate"
           element={
-            <ProtectedRoute session={session}>
+            <AdminRoute session={session}>
               <AppLayout>
                 <GenerateCourse />
               </AppLayout>
-            </ProtectedRoute>
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute session={session}>
+              <AppLayout>
+                <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+                  <AdminPanel />
+                </React.Suspense>
+              </AppLayout>
+            </AdminRoute>
           }
         />
         <Route

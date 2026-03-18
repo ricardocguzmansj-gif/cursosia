@@ -9,6 +9,7 @@ export default function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [role, setRole] = useState(null);
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
@@ -18,8 +19,12 @@ export default function Dashboard() {
 
   const loadDashboard = async () => {
     try {
-      const dashboardData = await api.getDashboardData();
+      const [dashboardData, userRole] = await Promise.all([
+        api.getDashboardData(),
+        api.getUserRole()
+      ]);
       setData(dashboardData);
+      setRole(userRole);
       
       if (!dashboardData.profile.onboarding_completed) {
         setShowOnboarding(true);
@@ -121,9 +126,11 @@ export default function Dashboard() {
               <p className="welcome-text">Has acumulado <strong>{profile.total_xp} XP</strong> ¡Sigue así!</p>
             </div>
           </div>
-          <div className="header-actions">
-            <Link to="/generate" className="btn btn-primary">✨ Generar nuevo curso</Link>
-          </div>
+          {role === 'admin' && (
+            <div className="header-actions">
+              <Link to="/generate" className="btn btn-primary">✨ Generar nuevo curso</Link>
+            </div>
+          )}
         </header>
 
         <div className="dashboard-grid">

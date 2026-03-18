@@ -9,8 +9,34 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { t } = useTranslation();
+
+  const generatePassword = () => {
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const digits = '0123456789';
+    const symbols = '!@#$%&*_+-=';
+    const all = upper + lower + digits + symbols;
+    let pwd = [
+      upper[Math.floor(Math.random() * upper.length)],
+      lower[Math.floor(Math.random() * lower.length)],
+      digits[Math.floor(Math.random() * digits.length)],
+      symbols[Math.floor(Math.random() * symbols.length)],
+    ];
+    for (let i = 4; i < 16; i++) {
+      pwd.push(all[Math.floor(Math.random() * all.length)]);
+    }
+    // Shuffle
+    for (let i = pwd.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pwd[i], pwd[j]] = [pwd[j], pwd[i]];
+    }
+    const generated = pwd.join('');
+    setPassword(generated);
+    setShowPassword(true); // Show it so user can see/copy
+  };
 
   const handleGoogleSignup = async () => {
     try {
@@ -105,15 +131,32 @@ export default function Register() {
 
           <div className="form-group">
             <label>{t('login_password')}</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={t('register_pass_ph', 'Mínimo 6 caracteres')}
-              minLength={6}
-              autoComplete="new-password"
-              required
-            />
+            <div className="password-wrapper">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={t('register_pass_ph', 'Mínimo 6 caracteres')}
+                minLength={6}
+                autoComplete="new-password"
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
+            <button
+              type="button"
+              className="btn-suggest-password"
+              onClick={generatePassword}
+            >
+              🎲 {t('register_suggest_pass', 'Sugerir contraseña segura')}
+            </button>
           </div>
 
           <button className="btn btn-accent btn-lg" disabled={loading} style={{ width: "100%" }}>

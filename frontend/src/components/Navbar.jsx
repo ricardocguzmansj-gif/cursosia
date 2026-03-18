@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { useTranslation } from "react-i18next";
 import NotificationBell from "./NotificationBell";
 
@@ -9,11 +10,14 @@ export default function Navbar() {
   const { t, i18n } = useTranslation();
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [role, setRole] = useState(null);
 
-  // Listen for theme changes from other tabs if needed, or simply initialize
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    api.getUserRole().then(r => setRole(r));
   }, []);
+
+  const isAdmin = role === 'admin';
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
@@ -59,11 +63,12 @@ export default function Navbar() {
           {theme === 'light' ? '🌙' : '☀️'}
         </button>
         <Link to="/dashboard" className="nav-item">🏠 {t("nav_dashboard", "Dashboard")}</Link>
-        <Link to="/generate" className="nav-item">✨ {t("nav_generate", "Generar")}</Link>
+        {isAdmin && <Link to="/generate" className="nav-item">✨ {t("nav_generate", "Generar")}</Link>}
         <Link to="/catalog" className="nav-item">📚 {t("nav_catalog", "Catálogo")}</Link>
         <Link to="/leaderboard" className="nav-item" title="Ranking">🏆</Link>
         <Link to="/analytics" className="nav-item" title="Estadísticas">📊</Link>
         <Link to="/affiliates" className="nav-item" title="Afiliados">🤝</Link>
+        {isAdmin && <Link to="/admin" className="nav-item nav-admin">🛡️ {t("nav_admin", "Admin")}</Link>}
         <NotificationBell />
         <button onClick={handleLogout}>{t("nav_logout")}</button>
       </div>
