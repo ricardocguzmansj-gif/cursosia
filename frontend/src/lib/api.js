@@ -36,7 +36,11 @@ export const api = {
     });
 
     const result = await res.json();
-    if (!res.ok) throw new Error(result.error || "Error generando curso");
+    if (!res.ok) {
+      const errorMsg = result.error || "Error generando curso";
+      const detailsMsg = result.details ? ` Detalles: ${JSON.stringify(result.details)}` : "";
+      throw new Error(errorMsg + detailsMsg);
+    }
     return result;
   },
 

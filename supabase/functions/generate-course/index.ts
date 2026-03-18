@@ -123,10 +123,14 @@ const allowedOrigins = [
 ];
 
 function getCorsHeaders(reqOrigin: string | null) {
-  const origin = reqOrigin && allowedOrigins.includes(reqOrigin) 
-    ? reqOrigin 
-    : allowedOrigins[0];
-    
+  // Allow preview deployments by checking suffix, else default to origin or '*'
+  let origin = '*';
+  if (reqOrigin) {
+    if (allowedOrigins.includes(reqOrigin) || reqOrigin.endsWith('.cursosia.pages.dev')) {
+      origin = reqOrigin;
+    }
+  }
+
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -146,7 +150,8 @@ Deno.serve(async (req: Request) => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'No autorizado' }), {
+      console.error("Auth header missing");
+      return new Response(JSON.stringify({ error: 'No autorizado - Cabecera faltante' }), {
         status: 401,
         headers: { ...headers, 'Content-Type': 'application/json' },
       });
@@ -162,7 +167,8 @@ Deno.serve(async (req: Request) => {
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Token inválido' }), {
+      console.error("Auth Error:", userError?.message || "User not found");
+      return new Response(JSON.stringify({ error: 'Token inválido', details: userError?.message }), {
         status: 401,
         headers: { ...headers, 'Content-Type': 'application/json' },
       });
@@ -176,6 +182,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (profileError || !profile || profile.role !== 'admin') {
+      console.error("Admin Check Failed:", profileError?.message || "Not admin", "Role:", profile?.role);
       return new Response(JSON.stringify({ error: 'Solo los administradores pueden generar cursos' }), {
         status: 403,
         headers: { ...headers, 'Content-Type': 'application/json' },
@@ -201,7 +208,7 @@ Deno.serve(async (req: Request) => {
     const systemPrompt = getSystemPrompt(targetLanguage);
 
 // @ts-ignore: Deno is global in Supabase
-    const apiKey = Deno.env.get('GEMINI_API_KEY');
+    const apiKey = Deno.env.get('GEMINI_API_KEY')?.trim();
     if (!apiKey) {
       return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not configured' }), {
         status: 500,
@@ -258,11 +265,12 @@ Deno.serve(async (req: Request) => {
         } else {
           const errText = await geminiRes.text();
           console.error(`⚠️ Error con modelo ${model} (${geminiRes.status}):`, errText);
-          fallbackErrors.push(`[${model}: HTTP ${geminiRes.status}]`);
+          fallbackErrors.push(`[${model}: HTTP ${geminiRes.status} - ${errText.substring(0, 100)}]`);
         }
       } catch (err) {
-        console.error(`❌ Excepción con modelo ${model}:`, err instanceof Error ? err.message : String(err));
-        fallbackErrors.push(`[${model}: Network Error]`);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        console.error(`❌ Excepción con modelo ${model}:`, errorMsg);
+        fallbackErrors.push(`[${model}: Excepción - ${errorMsg}]`);
       }
     }
 
