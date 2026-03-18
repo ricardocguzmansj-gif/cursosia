@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { useTranslation } from "react-i18next";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -8,6 +9,7 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleGoogleLogin = async () => {
     try {
@@ -22,7 +24,7 @@ export default function Login() {
       if (authError) throw authError;
       // Note: Redirects automatically, local storage will be set in main.jsx onAuthStateChange
     } catch (err) {
-      setError(err.message || "Error al conectar con Google");
+      setError(err.message || "Error");
       setLoading(false);
     }
   };
@@ -43,7 +45,7 @@ export default function Login() {
       localStorage.setItem("access_token", data.session.access_token);
       navigate("/dashboard");
     } catch (err) {
-      setError(err.message || "Error al iniciar sesión");
+      setError(err.message || "Error");
     } finally {
       setLoading(false);
     }
@@ -52,8 +54,8 @@ export default function Login() {
   return (
     <div className="auth-page">
       <div className="auth-card glass fade-in">
-        <h1>Bienvenido de vuelta</h1>
-        <p className="subtitle">Ingresá a tu cuenta de CursosIA</p>
+        <h1>{t('login_title')}</h1>
+        <p className="subtitle">{t('login_subtitle')}</p>
 
         {error && <div className="error-msg">{error}</div>}
 
@@ -65,14 +67,14 @@ export default function Login() {
           type="button"
         >
           <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google logo" />
-          Ingresar con Google
+          {t('login_google')}
         </button>
 
-        <div className="divider">o usar email</div>
+        <div className="divider">{t('login_or')}</div>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Email</label>
+            <label>{t('login_email')}</label>
             <input
               type="email"
               value={email}
@@ -83,7 +85,7 @@ export default function Login() {
           </div>
 
           <div className="form-group" style={{ marginBottom: "0.5rem" }}>
-            <label>Contraseña</label>
+            <label>{t('login_password')}</label>
             <input
               type="password"
               value={password}
@@ -95,16 +97,16 @@ export default function Login() {
           </div>
 
           <div style={{ textAlign: "right", marginBottom: "1.5rem", fontSize: "0.85rem" }}>
-            <a href="#" className="text-muted" onClick={(e) => { e.preventDefault(); alert("Funcionalidad próximamente disponible."); }}>¿Olvidaste tu contraseña?</a>
+            <a href="#" className="text-muted" onClick={(e) => { e.preventDefault(); }}>¿Olvidaste tu contraseña?</a>
           </div>
 
           <button className="btn btn-primary btn-lg" disabled={loading} style={{ width: "100%" }}>
-            {loading ? "Ingresando..." : "Iniciar sesión"}
+            {loading ? "..." : t('login_btn')}
           </button>
         </form>
 
         <div className="auth-footer">
-          ¿No tenés cuenta? <Link to="/register">Registrate gratis</Link>
+          {t('login_no_account')} <Link to="/register">{t('login_register_link')}</Link>
         </div>
       </div>
     </div>

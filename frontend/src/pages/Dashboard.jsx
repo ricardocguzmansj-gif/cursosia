@@ -1,20 +1,35 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
+import { useTranslation } from "react-i18next";
 
 export default function Dashboard() {
   const [courses, setCourses] = useState([]);
+  const [progressMap, setProgressMap] = useState({});
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
 
   useEffect(() => {
-    loadCourses();
+    loadDashboard();
   }, []);
 
-  const loadCourses = async () => {
+  const loadDashboard = async () => {
     try {
-      const data = await api.getCourses();
-      setCourses(data);
+      const coursesData = await api.getCourses();
+      setCourses(coursesData);
+
+      // Load progress for each course
+      const progMap = {};
+      await Promise.all(
+        coursesData.map(async (c) => {
+          try {
+            const prog = await api.getProgress(c.id);
+            progMap[c.id] = prog;
+          } catch { progMap[c.id] = []; }
+        })
+      );
+      setProgressMap(progMap);
     } catch (err) {
       console.error(err);
     } finally {
@@ -22,23 +37,57 @@ export default function Dashboard() {
     }
   };
 
+  const getProgressPercent = (course) => {
+    const prog = progressMap[course.id] || [];
+    const completed = prog.filter(p => p.completed).length;
+    // We don't have total lessons count from the list query, estimate from progress
+    // For a proper implementation we'd need the content, but we can show completed count
+    return { completed, total: null };
+  };
+
   const handleDelete = async (e, id) => {
     e.stopPropagation();
-    if (!confirm("¿Eliminar este curso?")) return;
-
+    if (!window.confirm(t('dash_delete_prompt', '¿Eliminar este curso?'))) return;
     try {
       await api.deleteCourse(id);
       setCourses(courses.filter(c => c.id !== id));
+    } catch { alert(t('dash_delete_error', 'Error eliminando el curso')); }
+  };
+
+  const handlePublish = async (e, course) => {
+    e.stopPropagation();
+    try {
+      const slug = course.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      if (course.is_published) {
+        await api.unpublishCourse(course.id);
+        setCourses(courses.map(c => c.id === course.id ? { ...c, is_published: false } : c));
+      } else {
+        await api.publishCourse(course.id, slug + '-' + course.id.slice(0, 8));
+        setCourses(courses.map(c => c.id === course.id ? { ...c, is_published: true } : c));
+      }
     } catch (err) {
-      alert("Error eliminando el curso");
+      console.error(err);
+      alert('Error al cambiar visibilidad');
+    }
+  };
+
+  const handleContinue = async (e, courseId) => {
+    e.stopPropagation();
+    try {
+      const pos = await api.getLastPosition(courseId);
+      if (pos) {
+        navigate(`/course/${courseId}?u=${pos.unit_index}&l=${pos.lesson_index}`);
+      } else {
+        navigate(`/course/${courseId}`);
+      }
+    } catch {
+      navigate(`/course/${courseId}`);
     }
   };
 
   const formatDate = (date) => {
-    return new Date(date).toLocaleDateString("es", {
-      day: "numeric",
-      month: "long",
-      year: "numeric"
+    return new Date(date).toLocaleDateString(i18n.language || "es", {
+      day: "numeric", month: "long", year: "numeric"
     });
   };
 
@@ -53,9 +102,9 @@ export default function Dashboard() {
   return (
     <div className="dashboard fade-in">
       <div className="dashboard-header">
-        <h1>Mis Cursos</h1>
+        <h1>{t('dashboard_title')}</h1>
         <Link to="/generate" className="btn btn-primary">
-          ✨ Generar nuevo curso
+          ✨ {t('dashboard_new_course')}
         </Link>
       </div>
 
@@ -63,36 +112,67 @@ export default function Dashboard() {
         {courses.length === 0 ? (
           <div className="empty-state">
             <span className="empty-icon">📚</span>
-            <h3>Aún no tenés cursos</h3>
-            <p>Creá tu primer curso con IA en menos de un minuto</p>
+            <h3>{t('dashboard_empty')}</h3>
+            <p>{t('dash_empty_sub', 'Crea tu primer curso con IA en menos de un minuto')}</p>
             <Link to="/generate" className="btn btn-primary btn-lg">
-              ✨ Generar mi primer curso
+              ✨ {t('dash_empty_cta', 'Generar mi primer curso')}
             </Link>
           </div>
         ) : (
-          courses.map(course => (
-            <div
-              key={course.id}
-              className="card course-card"
-              onClick={() => navigate(`/course/${course.id}`)}
-            >
-              <div className="course-meta">
-                <span className="badge badge-level">{course.level}</span>
-                <span className="badge badge-profile">{course.profile}</span>
+          courses.map(course => {
+            const { completed } = getProgressPercent(course);
+            return (
+              <div
+                key={course.id}
+                className="card course-card"
+                onClick={() => navigate(`/course/${course.id}`)}
+              >
+                <div className="course-meta">
+                  <span className="badge badge-level">{course.level}</span>
+                  <span className="badge badge-profile">{course.profile}</span>
+                  {course.is_published && (
+                    <span className="badge" style={{ background: 'rgba(0,184,148,0.15)', color: 'var(--success)' }}>
+                      🌍 Publicado
+                    </span>
+                  )}
+                </div>
+                <h3>{course.title}</h3>
+                <p className="course-topic">📖 {course.topic}</p>
+
+                {/* Progress indicator */}
+                {completed > 0 && (
+                  <div style={{ margin: '0.75rem 0' }}>
+                    <div className="progress-bar">
+                      <div className="progress-fill" style={{ width: `${Math.min(completed * 10, 100)}%` }}></div>
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.25rem' }}>
+                      {completed} lecciones completadas
+                    </p>
+                  </div>
+                )}
+
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.75rem" }}>
+                  <span className="course-date">{formatDate(course.created_at)}</span>
+                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                    {completed > 0 && (
+                      <button className="btn btn-accent btn-sm" onClick={(e) => handleContinue(e, course.id)}>
+                        ▶ Continuar
+                      </button>
+                    )}
+                    <button
+                      className="btn btn-outline btn-sm"
+                      onClick={(e) => handlePublish(e, course)}
+                    >
+                      {course.is_published ? '🔒 Despublicar' : '🌍 Publicar'}
+                    </button>
+                    <button className="btn btn-danger btn-sm" onClick={(e) => handleDelete(e, course.id)}>
+                      {t('dash_delete_btn', 'Eliminar')}
+                    </button>
+                  </div>
+                </div>
               </div>
-              <h3>{course.title}</h3>
-              <p className="course-topic">📖 {course.topic}</p>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span className="course-date">{formatDate(course.created_at)}</span>
-                <button
-                  className="btn btn-danger btn-sm"
-                  onClick={(e) => handleDelete(e, course.id)}
-                >
-                  Eliminar
-                </button>
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

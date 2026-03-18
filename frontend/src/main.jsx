@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "./lib/supabase";
 import "./index.css";
+import "./i18n"; // Import i18n config
 
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -10,8 +11,13 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import GenerateCourse from "./pages/GenerateCourse";
 import Navbar from "./components/Navbar";
+import { TenantProvider } from "./components/TenantProvider";
 
 const CourseView = React.lazy(() => import("./pages/CourseView"));
+const Certificate = React.lazy(() => import("./pages/Certificate"));
+const Catalog = React.lazy(() => import("./pages/Catalog"));
+const Analytics = React.lazy(() => import("./pages/Analytics"));
+const AffiliateDashboard = React.lazy(() => import("./pages/AffiliateDashboard"));
 
 function ProtectedRoute({ session, children }) {
   // Wait for session to be defined (handled by App's loading state)
@@ -63,6 +69,7 @@ function App() {
   }
 
   return (
+    <TenantProvider>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
@@ -100,9 +107,58 @@ function App() {
             </ProtectedRoute>
           }
         />
+        {/* Public routes */}
+        <Route
+          path="/certificate/:code"
+          element={
+            <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+              <Certificate />
+            </React.Suspense>
+          }
+        />
+        <Route
+          path="/catalog"
+          element={
+            <AppLayout>
+              <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+                <Catalog />
+              </React.Suspense>
+            </AppLayout>
+          }
+        />
+        {/* Analytics & Affiliates (protected) */}
+        <Route
+          path="/analytics"
+          element={
+            <ProtectedRoute session={session}>
+              <AppLayout>
+                <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+                  <Analytics />
+                </React.Suspense>
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/affiliates"
+          element={
+            <ProtectedRoute session={session}>
+              <AppLayout>
+                <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+                  <AffiliateDashboard />
+                </React.Suspense>
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
+    </TenantProvider>
   );
 }
+
+// Initialize theme
+const savedTheme = localStorage.getItem('theme') || 'dark';
+document.documentElement.setAttribute('data-theme', savedTheme);
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);

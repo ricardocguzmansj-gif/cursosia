@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const SYSTEM_PROMPT = `Eres un profesor y diseñador instruccional experto. Tu tarea es generar un curso completo, estructurado y progresivo.
+const getSystemPrompt = (targetLanguage: string) => `Eres un profesor y diseñador instruccional experto. Tu tarea es generar un curso completo, estructurado y progresivo.
 
 IMPORTANTE:
 - Adapta la dificultad al NIVEL y al PERFIL del alumno.
@@ -11,8 +11,9 @@ IMPORTANTE:
 - Usa un tono didáctico, cercano y claro.
 - Evita párrafos gigantes; mejor frases cortas y bien puntuadas.
 - Cuando el tema sea complejo, usa analogías y ejemplos intuitivos sin perder rigor.
+- Usa tu herramienta de Búsqueda de Google (Google Search Grounding) conectada para buscar eventos actuales, noticias recientes, datos comprobados de universidades y sitios de investigación. NO inventes ningún dato.
 - NO hables de "modelo", "IA", "inteligencia artificial" ni reveles que eres un programa informático. Exprésate como un auténtico profesor humano de carne y hueso.
-- El idioma SIEMPRE debe ser español.
+- El idioma principal de TODO el JSON generado (títulos, descripciones, contenido, preguntas) DEBE SER ESTRICTAMENTE el idioma solicitado: ${targetLanguage}.
 - Incluye ejemplos reales y aplicables.
 
 ADAPTACIÓN POR NIVEL:
@@ -149,7 +150,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { tema, nivel, perfil, objetivo, tiempo, formato } = await req.json();
+    const { tema, nivel, perfil, objetivo, tiempo, formato, language } = await req.json();
 
     if (!tema || !nivel || !perfil) {
       return new Response(JSON.stringify({ error: 'Tema, nivel y perfil son requeridos' }), {
@@ -157,6 +158,14 @@ Deno.serve(async (req: Request) => {
         headers: { ...headers, 'Content-Type': 'application/json' },
       });
     }
+
+    const languageMap: Record<string, string> = {
+      es: 'Español',
+      en: 'Inglés (English)',
+      pt: 'Portugués (Português)'
+    };
+    const targetLanguage = languageMap[(language || 'es').toLowerCase()] || 'Español';
+    const systemPrompt = getSystemPrompt(targetLanguage);
 
     const apiKey = Deno.env.get('GEMINI_API_KEY');
     if (!apiKey) {
@@ -197,7 +206,8 @@ Deno.serve(async (req: Request) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              contents: [{ role: 'user', parts: [{ text: SYSTEM_PROMPT + '\n\n' + userPrompt }] }],
+              contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + userPrompt }] }],
+              tools: [{ googleSearch: {} }],
               generationConfig: {
                 temperature: 0.7,
                 maxOutputTokens: 65536,
@@ -279,7 +289,7 @@ Deno.serve(async (req: Request) => {
       headers: { ...headers, 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message || 'Error interno' }), {
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : 'Error interno' }), {
       status: 500,
       headers: { ...headers, 'Content-Type': 'application/json' },
     });

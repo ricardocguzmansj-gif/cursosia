@@ -1,15 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
+import TutorChat from "../components/TutorChat";
 
 export default function CourseView() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [course, setCourse] = useState(null);
   const [progress, setProgress] = useState([]);
-  const [currentUnit, setCurrentUnit] = useState(-1); // -1 = overview
+  const [currentUnit, setCurrentUnit] = useState(-1);
   const [currentLesson, setCurrentLesson] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // Read continue position from URL params
+  const searchParams = new URLSearchParams(window.location.search);
+  const initialUnit = searchParams.get('u');
+  const initialLesson = searchParams.get('l');
 
   useEffect(() => { loadCourse(); }, [id]);
 
@@ -21,6 +27,11 @@ export default function CourseView() {
       ]);
       setCourse(courseData);
       setProgress(progressData);
+      // If continue params exist, jump to that position
+      if (initialUnit !== null) {
+        setCurrentUnit(parseInt(initialUnit));
+        setCurrentLesson(parseInt(initialLesson || '0'));
+      }
     } catch (err) {
       console.error(err);
       navigate("/dashboard");
@@ -154,18 +165,26 @@ export default function CourseView() {
 
         {/* ===== LESSON VIEW ===== */}
         {currentUnit >= 0 && (
-          <LessonView
-            curso={curso}
-            currentUnit={currentUnit}
-            currentLesson={currentLesson}
-            courseId={id}
-            isLessonCompleted={isLessonCompleted}
-            progress={progress}
-            setProgress={setProgress}
-            goNext={goNext}
-            goPrev={goPrev}
-            unidades={unidades}
-          />
+          <>
+            <LessonView
+              curso={curso}
+              currentUnit={currentUnit}
+              currentLesson={currentLesson}
+              courseId={id}
+              isLessonCompleted={isLessonCompleted}
+              progress={progress}
+              setProgress={setProgress}
+              goNext={goNext}
+              goPrev={goPrev}
+              unidades={unidades}
+            />
+            <TutorChat
+              courseId={id}
+              unitIndex={currentUnit}
+              lessonIndex={currentLesson}
+              accessToken={localStorage.getItem('access_token')}
+            />
+          </>
         )}
 
         {/* ===== FINAL SECTIONS (-2) ===== */}
@@ -234,6 +253,31 @@ function CourseOverview({ curso, course, onStart }) {
 function LessonView({ curso, currentUnit, currentLesson, courseId, isLessonCompleted, progress, setProgress, goNext, goPrev, unidades }) {
   const unidadActual = unidades[currentUnit];
   const leccion = unidadActual?.lecciones?.[currentLesson];
+  const savedRef = useRef({});
+
+  // Auto-save progress when viewing a lesson (for lessons WITHOUT a quiz)
+  useEffect(() => {
+    if (!leccion) return;
+    const hasQuiz = leccion.test_rapido && leccion.test_rapido.length > 0;
+    if (hasQuiz) return; // quiz submit handles its own save
+
+    const key = `${currentUnit}-${currentLesson}`;
+    if (savedRef.current[key]) return; // already saved this session
+    if (isLessonCompleted(currentUnit, currentLesson)) return;
+
+    savedRef.current[key] = true;
+    api.saveProgress(courseId, currentUnit, currentLesson, null)
+      .then(() => {
+        setProgress(prev => [...prev, {
+          unit_index: currentUnit,
+          lesson_index: currentLesson,
+          completed: true,
+          score: null
+        }]);
+      })
+      .catch(err => console.error('Error saving progress:', err));
+  }, [currentUnit, currentLesson]);
+
   if (!leccion) return null;
 
   return (

@@ -97,5 +97,82 @@ export const api = {
       .eq("course_id", courseId);
     if (error) throw error;
     return data;
+  },
+
+  getLastPosition: async (courseId) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .rpc('get_last_position', { p_user_id: user.id, p_course_id: courseId });
+    if (error) throw error;
+    return data?.[0] || null;
+  },
+
+  getProfile: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  getPublishedCourses: async () => {
+    const { data, error } = await supabase
+      .from("courses")
+      .select("id, title, topic, level, profile, price, currency, language, slug, created_at")
+      .eq("is_published", true)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
+  publishCourse: async (id, slug) => {
+    const { data, error } = await supabase
+      .from("courses")
+      .update({ is_published: true, slug })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  unpublishCourse: async (id) => {
+    const { data, error } = await supabase
+      .from("courses")
+      .update({ is_published: false })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  enrollInCourse: async (courseId) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from("course_enrollments")
+      .upsert({
+        user_id: user.id,
+        course_id: courseId,
+        source: 'free'
+      }, { onConflict: 'user_id,course_id' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  isEnrolled: async (courseId) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from("course_enrollments")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("course_id", courseId);
+    if (error) throw error;
+    return data?.length > 0;
   }
 };

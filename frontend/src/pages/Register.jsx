@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { useTranslation } from "react-i18next";
 
 export default function Register() {
   const [fullName, setFullName] = useState("");
@@ -9,6 +10,7 @@ export default function Register() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleGoogleSignup = async () => {
     try {
@@ -22,7 +24,7 @@ export default function Register() {
       });
       if (authError) throw authError;
     } catch (err) {
-      setError(err.message || "Error al conectar con Google");
+      setError(err.message || "Error");
       setLoading(false);
     }
   };
@@ -47,12 +49,11 @@ export default function Register() {
         localStorage.setItem("access_token", data.session.access_token);
         navigate("/dashboard");
       } else {
-        // Email confirmation required
-        alert("¡Cuenta creada exitosamente! Por favor, revisá tu bandeja de entrada para confirmar tu email antes de iniciar sesión.");
+        alert(t('register_success_msg', '¡Cuenta creada! Revisa tu email.'));
         navigate("/login");
       }
     } catch (err) {
-      setError(err.message || "Error al registrarse");
+      setError(err.message || "Error");
     } finally {
       setLoading(false);
     }
@@ -61,8 +62,8 @@ export default function Register() {
   return (
     <div className="auth-page">
       <div className="auth-card glass fade-in">
-        <h1>Crear cuenta</h1>
-        <p className="subtitle">Empezá a crear cursos con IA en minutos</p>
+        <h1>{t('register_title')}</h1>
+        <p className="subtitle">{t('register_subtitle')}</p>
 
         {error && <div className="error-msg">{error}</div>}
 
@@ -74,25 +75,25 @@ export default function Register() {
           type="button"
         >
           <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google logo" />
-          Registrarse con Google
+          {t('register_google')}
         </button>
 
-        <div className="divider">o registrarse con email</div>
+        <div className="divider">{t('login_or', 'o usar email')}</div>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Nombre completo</label>
+            <label>{t('register_name', 'Nombre completo')}</label>
             <input
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              placeholder="Tu nombre"
+              placeholder={t('register_name_ph', 'Tu nombre')}
               required
             />
           </div>
 
           <div className="form-group">
-            <label>Email</label>
+            <label>{t('login_email')}</label>
             <input
               type="email"
               value={email}
@@ -103,12 +104,12 @@ export default function Register() {
           </div>
 
           <div className="form-group">
-            <label>Contraseña</label>
+            <label>{t('login_password')}</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 6 caracteres"
+              placeholder={t('register_pass_ph', 'Mínimo 6 caracteres')}
               minLength={6}
               autoComplete="new-password"
               required
@@ -116,12 +117,12 @@ export default function Register() {
           </div>
 
           <button className="btn btn-accent btn-lg" disabled={loading} style={{ width: "100%" }}>
-            {loading ? "Creando cuenta..." : "Registrarse gratis"}
+            {loading ? "..." : t('register_btn', 'Registrarse')}
           </button>
         </form>
 
         <div className="auth-footer">
-          ¿Ya tenés cuenta? <Link to="/login">Iniciá sesión</Link>
+          {t('register_has_account')} <Link to="/login">{t('register_login_link')}</Link>
         </div>
       </div>
     </div>

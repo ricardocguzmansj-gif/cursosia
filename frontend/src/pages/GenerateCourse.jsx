@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
+import { useTranslation } from "react-i18next";
 
 export default function GenerateCourse() {
   const [form, setForm] = useState({
@@ -14,6 +15,7 @@ export default function GenerateCourse() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -25,10 +27,13 @@ export default function GenerateCourse() {
     setLoading(true);
 
     try {
-      const course = await api.generateCourse(form);
+      const course = await api.generateCourse({ 
+        ...form, 
+        language: i18n.language || "es" 
+      });
       navigate(`/course/${course.id}`);
     } catch (err) {
-      setError(err.message || "Error al generar el curso");
+      setError(err.message || t('gen_error', 'Error al generar el curso'));
       setLoading(false);
     }
   };
@@ -37,13 +42,10 @@ export default function GenerateCourse() {
     return (
       <div className="loading-overlay">
         <div className="loading-spinner"></div>
-        <h2>Diseñando tu aula virtual...</h2>
-        <p className="loading-sub">
-          La IA está creando un plan de estudio completo con lecciones,
-          actividades y evaluaciones adaptadas a tu perfil.
-        </p>
+        <h2>{t('gen_loading')}</h2>
+        <p className="loading-sub">{t('gen_loading_sub')}</p>
         <p className="loading-sub" style={{ opacity: 0.6, fontSize: "0.85rem" }}>
-          Esto puede tardar entre 20 y 60 segundos
+          {t('gen_loading_time', 'Esto puede tardar entre 20 y 60 segundos')}
         </p>
       </div>
     );
@@ -52,12 +54,8 @@ export default function GenerateCourse() {
   return (
     <div className="generate-page fade-in">
       <div className="generate-hero">
-        <h1>Crea tu aula virtual en minutos</h1>
-        <p className="subtitle">
-          Nuestra IA diseña un plan de estudio completo con lecciones progresivas,
-          actividades prácticas, tests interactivos y evaluación final.
-          Todo adaptado a tu nivel y objetivo.
-        </p>
+        <h1>{t('gen_title')}</h1>
+        <p className="subtitle">{t('gen_subtitle')}</p>
       </div>
 
       {error && <div className="error-msg">{error}</div>}
@@ -65,76 +63,76 @@ export default function GenerateCourse() {
       <div className="generate-card glass">
         <form className="generate-form" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Tema del curso</label>
+            <label>{t('gen_topic_label')}</label>
             <input
               type="text"
               name="tema"
               value={form.tema}
               onChange={handleChange}
-              placeholder="Ej: Marketing digital, Química orgánica, Gestión del tiempo, Python..."
+              placeholder={t('gen_topic_ph')}
               required
             />
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label>Nivel del alumno</label>
+              <label>{t('gen_level_label')}</label>
               <select name="nivel" value={form.nivel} onChange={handleChange}>
-                <option value="principiante">🟢 Principiante</option>
-                <option value="intermedio">🟡 Intermedio</option>
-                <option value="avanzado">🔴 Avanzado</option>
+                <option value="principiante">🟢 {t('gen_level_opt1')}</option>
+                <option value="intermedio">🟡 {t('gen_level_opt2')}</option>
+                <option value="avanzado">🔴 {t('gen_level_opt3')}</option>
               </select>
             </div>
 
             <div className="form-group">
-              <label>Formato preferido</label>
+              <label>{t('gen_format_label')}</label>
               <select name="formato" value={form.formato} onChange={handleChange}>
-                <option value="lecturas_breves">📖 Lecturas breves</option>
-                <option value="lecturas_ejercicios">📝 Lecturas + ejercicios</option>
-                <option value="esquemas_problemas">🧩 Esquemas + problemas</option>
-                <option value="mixto">🔄 Mixto</option>
+                <option value="lecturas_breves">📖 {t('gen_format_opt1')}</option>
+                <option value="lecturas_ejercicios">📝 {t('gen_format_opt2')}</option>
+                <option value="esquemas_problemas">🧩 {t('gen_format_opt3')}</option>
+                <option value="mixto">🔄 {t('gen_format_opt4')}</option>
               </select>
             </div>
           </div>
 
           <div className="form-group">
-            <label>Perfil del alumno</label>
+            <label>{t('gen_profile_label')}</label>
             <input
               type="text"
               name="perfil"
               value={form.perfil}
               onChange={handleChange}
-              placeholder="Ej: Estudiante de bachillerato, Profesional de marketing, Estudiante de 1º de Química..."
+              placeholder={t('gen_profile_ph')}
               required
             />
           </div>
 
           <div className="form-group">
-            <label>Objetivo principal</label>
+            <label>{t('gen_objective_label')}</label>
             <textarea
               name="objetivo"
               value={form.objetivo}
               onChange={handleChange}
-              placeholder="Ej: Aprobar la EBAU, Entender los mecanismos básicos de genética, Organizar mejor mi tiempo..."
+              placeholder={t('gen_objective_ph')}
               rows={2}
               required
             />
           </div>
 
           <div className="form-group">
-            <label>Tiempo disponible</label>
+            <label>{t('gen_time_label')}</label>
             <input
               type="text"
               name="tiempo"
               value={form.tiempo}
               onChange={handleChange}
-              placeholder="Ej: 4 semanas, 30 min al día"
+              placeholder={t('gen_time_ph')}
               required
             />
           </div>
 
-          <button className="btn btn-accent btn-lg" style={{ width: "100%", marginTop: "0.5rem" }}>
-            🎓 Diseñar curso ahora
+          <button className="btn btn-accent btn-lg" style={{ width: "100%", marginTop: "0.5rem", pointerEvents: loading ? "none" : "auto" }}>
+            🎓 {t('gen_submit')}
           </button>
         </form>
       </div>
