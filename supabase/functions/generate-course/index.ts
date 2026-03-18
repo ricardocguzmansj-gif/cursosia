@@ -175,31 +175,65 @@ Deno.serve(async (req: Request) => {
 
     const userPrompt = `DATOS DEL USUARIO:\nTema: ${tema}\nNivel: ${nivel}\nPerfil: ${perfil}\nObjetivo: ${objetivo || 'Aprender sobre el tema'}\nTiempo disponible: ${tiempo || '4 semanas, 1 hora al día'}\nFormato preferido: ${formatoLabels[formato] || 'Mixto'}\n\nGenera el curso completo ahora.`;
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: SYSTEM_PROMPT + '\n\n' + userPrompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 65536,
-            responseMimeType: 'application/json',
-          },
-        }),
-      }
-    );
+    // OPTION B: Dynamic Routing (Enrutamiento Dinámico) basado en nivel
+    const isAdvanced = nivel.toLowerCase().includes('avanzado') || nivel.toLowerCase().includes('experto');
+    
+    // OPTION C: Fallback Mechanism (Sistema de Fallback)
+    const modelsToTry = isAdvanced 
+      ? ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'] // Avanzado intenta Pro primero
+      : ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash']; // Normal intenta Flash primero
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      return new Response(JSON.stringify({ error: 'Gemini API error: ' + geminiRes.status + ' - ' + errText }), {
+    let geminiRes;
+    let geminiData;
+    let successfulModel = null;
+    const fallbackErrors: string[] = [];
+
+    for (const model of modelsToTry) {
+      console.log(`🚀 Intentando generación con el modelo: ${model}...`);
+      try {
+        geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: SYSTEM_PROMPT + '\n\n' + userPrompt }] }],
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 65536,
+                responseMimeType: 'application/json',
+              },
+            }),
+          }
+        );
+
+        if (geminiRes.ok) {
+          geminiData = await geminiRes.json();
+          successfulModel = model;
+          break; // Salimos del bucle si fue exitoso
+        } else {
+          const errText = await geminiRes.text();
+          console.error(`⚠️ Error con modelo ${model} (${geminiRes.status}):`, errText);
+          fallbackErrors.push(`[${model}: HTTP ${geminiRes.status}]`);
+        }
+      } catch (err) {
+        console.error(`❌ Excepción con modelo ${model}:`, err instanceof Error ? err.message : String(err));
+        fallbackErrors.push(`[${model}: Network Error]`);
+      }
+    }
+
+    if (!successfulModel || !geminiData) {
+      console.error("🛑 Todos los modelos de Gemini fallaron:", fallbackErrors.join(', '));
+      return new Response(JSON.stringify({ 
+        error: 'No se pudo generar el curso. Todos los modelos de IA fallaron.', 
+        details: fallbackErrors 
+      }), {
         status: 502,
         headers: { ...headers, 'Content-Type': 'application/json' },
       });
     }
 
-    const geminiData = await geminiRes.json();
+    console.log(`✅ Generación exitosa usando el modelo: ${successfulModel}`);
     const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!text) {
