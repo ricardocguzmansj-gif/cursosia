@@ -13,9 +13,10 @@ import Navbar from "./components/Navbar";
 
 const CourseView = React.lazy(() => import("./pages/CourseView"));
 
-function ProtectedRoute({ children }) {
-  const token = localStorage.getItem("access_token");
-  if (!token) return <Navigate to="/login" />;
+function ProtectedRoute({ session, children }) {
+  // Wait for session to be defined (handled by App's loading state)
+  // If no session after loading, redirect to login
+  if (!session) return <Navigate to="/login" replace />;
   return children;
 }
 
@@ -29,9 +30,19 @@ function AppLayout({ children }) {
 }
 
 function App() {
-  // Listen for auth state changes
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Listen for auth state changes and initial session
   useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) localStorage.setItem("access_token", session.access_token);
+      setLoading(false);
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
       if (session) {
         localStorage.setItem("access_token", session.access_token);
       } else {
@@ -42,16 +53,25 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  if (loading) {
+    return (
+      <div className="loading-overlay" style={{ background: "var(--bg-dark)" }}>
+        <div className="loading-spinner"></div>
+        <p>Iniciando sesión...</p>
+      </div>
+    );
+  }
+
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={session ? <Navigate to="/dashboard" replace /> : <Login />} />
+        <Route path="/register" element={session ? <Navigate to="/dashboard" replace /> : <Register />} />
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute session={session}>
               <AppLayout>
                 <Dashboard />
               </AppLayout>
@@ -61,7 +81,7 @@ function App() {
         <Route
           path="/generate"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute session={session}>
               <AppLayout>
                 <GenerateCourse />
               </AppLayout>
@@ -71,7 +91,7 @@ function App() {
         <Route
           path="/course/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute session={session}>
               <AppLayout>
                 <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
                   <CourseView />
