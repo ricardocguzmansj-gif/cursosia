@@ -184,7 +184,8 @@ function CourseOverview({ curso, course, onStart }) {
       {/* Course Header */}
       <div className="course-header-card glass">
         <h1>{curso.titulo}</h1>
-        {curso.descripcion && <p className="course-desc">{curso.descripcion}</p>}
+        {curso.descripcion_corta && <p className="course-desc">{curso.descripcion_corta}</p>}
+        {!curso.descripcion_corta && curso.descripcion && <p className="course-desc">{curso.descripcion}</p>}
         <div className="course-tags">
           <span className="tag tag-nivel">📊 {curso.nivel || course.level}</span>
           <span className="tag tag-duracion">⏱️ {curso.duracion || course.duration}</span>
