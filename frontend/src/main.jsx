@@ -126,19 +126,17 @@ function App() {
             </AdminRoute>
           }
         />
+        {/* Public routes */}
         <Route
           path="/course/:id"
           element={
-            <ProtectedRoute session={session}>
-              <AppLayout>
-                <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
-                  <CourseView />
-                </React.Suspense>
-              </AppLayout>
-            </ProtectedRoute>
+            <AppLayout>
+              <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+                <CourseView />
+              </React.Suspense>
+            </AppLayout>
           }
         />
-        {/* Public routes */}
         <Route
           path="/certificate/:code"
           element={

@@ -63,11 +63,7 @@ export default function Catalog() {
   const [enrollLoading, setEnrollLoading] = useState(null);
 
   const handleCardClick = (course) => {
-    if (myEnrollments.includes(course.id)) {
-      navigate(`/course/${course.id}`);
-    } else {
-      toast("Para ingresar, primero haz clic en 'Inscribirme'", { icon: "ℹ️" });
-    }
+    navigate(`/course/${course.id}`);
   };
 
   const handleEnroll = async (e, course) => {

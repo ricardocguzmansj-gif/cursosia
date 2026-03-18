@@ -33,28 +33,34 @@ export default function CourseView() {
   const loadCourseData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("No autenticado");
 
-      const [courseData, progressData, enrollmentData, lastPos] = await Promise.all([
-        api.getCourse(id),
-        api.getProgress(id),
-        supabase.from("course_enrollments").select("*").eq("course_id", id).eq("user_id", user.id).single(),
-        api.getLastPosition(id)
-      ]);
+      const promises = [api.getCourse(id)];
+      if (user) {
+        promises.push(api.getProgress(id));
+        promises.push(supabase.from("course_enrollments").select("*").eq("course_id", id).eq("user_id", user.id).single());
+        promises.push(api.getLastPosition(id));
+      }
 
+      const results = await Promise.all(promises);
+      const courseData = results[0];
       setCourse(courseData);
-      setProgress(progressData);
-      setEnrollment(enrollmentData.data);
-      setLastPosition(lastPos);
 
-      // If continue params exist, jump to that position
-      if (initialUnit !== null) {
-        setCurrentUnit(parseInt(initialUnit));
-        setCurrentLesson(parseInt(initialLesson || '0'));
-      } else if (lastPos) {
-        // Auto-resume if last position is found
-        setCurrentUnit(lastPos.unit_index);
-        setCurrentLesson(lastPos.lesson_index);
+      if (user) {
+        setProgress(results[1]);
+        setEnrollment(results[2]?.data);
+        const lastPos = results[3];
+        setLastPosition(lastPos);
+
+        if (initialUnit !== null) {
+          setCurrentUnit(parseInt(initialUnit));
+          setCurrentLesson(parseInt(initialLesson || '0'));
+        } else if (lastPos) {
+          setCurrentUnit(lastPos.unit_index);
+          setCurrentLesson(lastPos.lesson_index);
+        }
+      } else {
+        setProgress([]);
+        setEnrollment(null);
       }
     } catch (err) {
       console.error(err);
@@ -71,6 +77,10 @@ export default function CourseView() {
   };
 
   const handleNavigate = (unitIdx, lessonIdx) => {
+    if (unitIdx >= 0 && !enrollment) {
+      toast("Para acceder a las lecciones, primero debes inscribirte en el curso.", { icon: "🔒" });
+      return;
+    }
     setCurrentUnit(unitIdx);
     setCurrentLesson(lessonIdx);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -189,12 +199,16 @@ export default function CourseView() {
         {currentUnit === -1 && (
           <CourseOverview 
             curso={curso} 
-            course={course} 
+            course={course}
+            hasProgress={progress.length > 0}
+            enrollment={enrollment}
             onStart={() => {
-              if (lastPosition) handleNavigate(lastPosition.unit_index, lastPosition.lesson_index);
-              else handleNavigate(0, 0);
+              if (!enrollment) {
+                window.location.href = '/catalog';
+              } else {
+                goNext();
+              }
             }} 
-            hasProgress={completedLessons > 0} 
           />
         )}
 
@@ -239,7 +253,7 @@ export default function CourseView() {
 }
 
 // ==================== COURSE OVERVIEW ====================
-function CourseOverview({ curso, course, onStart, hasProgress }) {
+function CourseOverview({ curso, course, onStart, hasProgress, enrollment }) {
   return (
     <div className="course-overview">
       {/* Course Header */}
@@ -286,12 +300,20 @@ function CourseOverview({ curso, course, onStart, hasProgress }) {
       </div>
 
       <div style={{ display: "flex", gap: "1rem", marginTop: "1.5rem" }}>
-        <button className="btn btn-accent btn-lg" onClick={onStart} style={{ flex: 1 }}>
-          🚀 {hasProgress ? "Continuar curso" : "Comenzar curso"}
-        </button>
-        <button className="btn btn-outline btn-lg" onClick={() => exportScorm12(course || curso)} title="Exportar paquete SCORM 1.2">
-          📦 SCORM
-        </button>
+        {!enrollment ? (
+          <button className="btn btn-accent btn-lg" onClick={onStart} style={{ flex: 1 }}>
+            🛒 Ver opciones de inscripción en el Catálogo
+          </button>
+        ) : (
+          <>
+            <button className="btn btn-accent btn-lg" onClick={onStart} style={{ flex: 1 }}>
+              🚀 {hasProgress ? "Continuar curso" : "Comenzar curso"}
+            </button>
+            <button className="btn btn-outline btn-lg" onClick={() => exportScorm12(course || curso)} title="Exportar paquete SCORM 1.2">
+              📦 SCORM
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
