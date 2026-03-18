@@ -9,6 +9,24 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const { error: authError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/dashboard'
+        }
+      });
+      if (authError) throw authError;
+      // Note: Redirects automatically, local storage will be set in main.jsx onAuthStateChange
+    } catch (err) {
+      setError(err.message || "Error al conectar con Google");
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -38,6 +56,19 @@ export default function Login() {
         <p className="subtitle">Ingresá a tu cuenta de CursosIA</p>
 
         {error && <div className="error-msg">{error}</div>}
+
+        <button 
+          className="btn btn-google btn-lg" 
+          onClick={handleGoogleLogin} 
+          disabled={loading} 
+          style={{ width: "100%", marginBottom: "1rem" }}
+          type="button"
+        >
+          <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google logo" />
+          Ingresar con Google
+        </button>
+
+        <div className="divider">o usar email</div>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
