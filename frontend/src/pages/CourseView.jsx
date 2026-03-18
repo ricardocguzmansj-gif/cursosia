@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import TutorChat from "../components/TutorChat";
+import ReviewSection from "../components/ReviewSection";
+import DiscussionPanel from "../components/DiscussionPanel";
 
 export default function CourseView() {
   const { id } = useParams();
@@ -189,7 +191,7 @@ export default function CourseView() {
 
         {/* ===== FINAL SECTIONS (-2) ===== */}
         {currentUnit === -2 && (
-          <FinalSections curso={curso} goPrev={goPrev} />
+          <FinalSections curso={curso} goPrev={goPrev} courseId={id} />
         )}
       </main>
     </div>
@@ -347,6 +349,8 @@ function LessonView({ curso, currentUnit, currentLesson, courseId, isLessonCompl
         />
       )}
 
+      <DiscussionPanel courseId={courseId} unitIndex={currentUnit} lessonIndex={currentLesson} />
+
       {/* Navigation */}
       <div className="lesson-nav">
         <button className="btn btn-outline" onClick={goPrev}>
@@ -361,7 +365,7 @@ function LessonView({ curso, currentUnit, currentLesson, courseId, isLessonCompl
 }
 
 // ==================== FINAL SECTIONS ====================
-function FinalSections({ curso, goPrev }) {
+function FinalSections({ curso, goPrev, courseId }) {
   const [evalAnswers, setEvalAnswers] = useState({});
   const [evalSubmitted, setEvalSubmitted] = useState(false);
 
@@ -478,6 +482,9 @@ function FinalSections({ curso, goPrev }) {
           </ul>
         </div>
       )}
+
+      {/* Reviews */}
+      <ReviewSection courseId={courseId} />
 
       {/* Navigation */}
       <div className="lesson-nav">

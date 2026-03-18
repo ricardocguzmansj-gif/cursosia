@@ -18,6 +18,7 @@ const Certificate = React.lazy(() => import("./pages/Certificate"));
 const Catalog = React.lazy(() => import("./pages/Catalog"));
 const Analytics = React.lazy(() => import("./pages/Analytics"));
 const AffiliateDashboard = React.lazy(() => import("./pages/AffiliateDashboard"));
+const Leaderboard = React.lazy(() => import("./pages/Leaderboard"));
 
 function ProtectedRoute({ session, children }) {
   // Wait for session to be defined (handled by App's loading state)
@@ -146,6 +147,18 @@ function App() {
               <AppLayout>
                 <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
                   <AffiliateDashboard />
+                </React.Suspense>
+              </AppLayout>
+            </ProtectedRoute>
+           }
+        />
+        <Route
+          path="/leaderboard"
+          element={
+            <ProtectedRoute session={session}>
+              <AppLayout>
+                <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+                  <Leaderboard />
                 </React.Suspense>
               </AppLayout>
             </ProtectedRoute>

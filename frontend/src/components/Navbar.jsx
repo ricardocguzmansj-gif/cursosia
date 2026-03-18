@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
+import NotificationBell from "./NotificationBell";
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -62,6 +63,8 @@ export default function Navbar() {
         <Link to="/catalog">📚 {t("nav_dashboard") === "Mis Cursos" ? "Catálogo" : t("nav_dashboard") === "My Courses" ? "Catalog" : "Catálogo"}</Link>
         <Link to="/analytics">📊</Link>
         <Link to="/affiliates">🤝</Link>
+        <Link to="/leaderboard">🏆</Link>
+        <NotificationBell />
         <button onClick={handleLogout}>{t("nav_logout")}</button>
       </div>
     </nav>
