@@ -25,6 +25,8 @@ export default function Landing() {
             <option value="en" style={{color: '#000'}}>EN</option>
             <option value="pt" style={{color: '#000'}}>PT</option>
           </select>
+          <Link to="/catalog">📚 {t('nav_catalog', 'Catálogo')}</Link>
+          <Link to="/jobs">💼 Empleos</Link>
           <a href="#features">{t('nav_features')}</a>
           <a href="#pricing">{t('nav_pricing')}</a>
           <Link to="/login" className="btn btn-outline btn-sm">{t('nav_login')}</Link>
