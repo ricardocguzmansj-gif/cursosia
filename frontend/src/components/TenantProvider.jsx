@@ -33,7 +33,7 @@ export function TenantProvider({ children }) {
           .from("tenants")
           .select("*")
           .eq("slug", slug)
-          .single();
+          .maybeSingle();
         
         if (data) {
           setTenant(data);
@@ -45,7 +45,7 @@ export function TenantProvider({ children }) {
           .from("tenants")
           .select("*")
           .eq("domain", hostname)
-          .single();
+          .maybeSingle();
         
         if (data) {
           setTenant(data);

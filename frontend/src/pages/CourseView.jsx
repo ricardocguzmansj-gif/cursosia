@@ -17,6 +17,7 @@ export default function CourseView() {
   const [currentUnit, setCurrentUnit] = useState(-1);
   const [currentLesson, setCurrentLesson] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [enrollment, setEnrollment] = useState(null);
 
   // Read continue position from URL params
   const searchParams = new URLSearchParams(window.location.search);
@@ -27,12 +28,14 @@ export default function CourseView() {
 
   const loadCourse = async () => {
     try {
-      const [courseData, progressData] = await Promise.all([
+      const [courseData, progressData, enrollmentData] = await Promise.all([
         api.getCourse(id),
-        api.getProgress(id)
+        api.getProgress(id),
+        supabase.from("course_enrollments").select("*").eq("course_id", id).eq("user_id", (await supabase.auth.getUser()).data.user.id).single()
       ]);
       setCourse(courseData);
       setProgress(progressData);
+      setEnrollment(enrollmentData.data);
       // If continue params exist, jump to that position
       if (initialUnit !== null) {
         setCurrentUnit(parseInt(initialUnit));
@@ -195,7 +198,13 @@ export default function CourseView() {
 
         {/* ===== FINAL SECTIONS (-2) ===== */}
         {currentUnit === -2 && (
-          <FinalSections curso={curso} goPrev={goPrev} courseId={id} />
+          <FinalSections 
+            curso={curso} 
+            goPrev={goPrev} 
+            courseId={id} 
+            enrollment={enrollment} 
+            setEnrollment={setEnrollment}
+          />
         )}
       </main>
     </div>
@@ -417,30 +426,34 @@ function LessonView({ curso, currentUnit, currentLesson, courseId, isLessonCompl
 }
 
 // ==================== FINAL SECTIONS ====================
-function FinalSections({ curso, goPrev, courseId }) {
+function FinalSections({ curso, goPrev, courseId, enrollment, setEnrollment }) {
   const [evalAnswers, setEvalAnswers] = useState({});
-  const [evalSubmitted, setEvalSubmitted] = useState(false);
+  const [evalSubmitted, setEvalSubmitted] = useState(enrollment?.final_score > 0);
   const [repasoLoading, setRepasoLoading] = useState(false);
   const [repasoResult, setRepasoResult] = useState("");
-
-  const handleGenerateRepaso = async () => {
-    setRepasoLoading(true);
-    const failed = evalPreguntas.filter((q, i) => evalAnswers[i] !== q.respuesta_correcta);
-    const textOfFailed = failed.map((q, i) => `${i+1}) Pregunta: ${q.pregunta} | Tu error: ${evalAnswers[i]} | Correcta: ${q.respuesta_correcta}`).join("\n");
-    const prompt = `Fallé estas preguntas:\n${textOfFailed}\nGenera una pequeña y directa guía de repaso (máx 3 párrafos) exclusiva sobre mis fallos. Sé tutor claro y alentador.`;
-    try {
-      const response = await api.chatWithTutor(courseId, prompt, localStorage.getItem('access_token'));
-      setRepasoResult(response);
-    } catch {
-      setRepasoResult("Hubo un error al generar tu repaso. Revisa el temario y vuelve a intentarlo.");
-    } finally {
-      setRepasoLoading(false);
-    }
-  };
+  const [certRequestLoading, setCertRequestLoading] = useState(false);
 
   const evalPreguntas = curso.evaluacion_final?.preguntas || [];
   const proyectos = curso.proyecto_final;
   const fuentes = curso.fuentes || [];
+
+  const handleLevelEvalSubmit = async () => {
+    const correct = evalPreguntas.filter((q, i) => evalAnswers[i] === q.respuesta_correcta).length;
+    // Score on a scale of 0-10
+    const rawScore = (correct / evalPreguntas.length) * 10;
+    const finalScore = Math.round(rawScore * 10) / 10; // 1 decimal
+
+    try {
+      const updatedEnrollment = await api.saveFinalScore(courseId, finalScore);
+      setEnrollment(updatedEnrollment);
+      setEvalSubmitted(true);
+      // Award XP for completing the final exam
+      api.awardXP(100, 'final_exam_completed', courseId).catch(() => {});
+    } catch (err) {
+      console.error("Error saving final score:", err);
+      alert("Error al guardar la calificación final");
+    }
+  };
 
   const handleEvalSelect = (qIdx, opt) => {
     if (evalSubmitted) return;
@@ -487,37 +500,52 @@ function FinalSections({ curso, goPrev, courseId }) {
           {!evalSubmitted ? (
             <button
               className="btn btn-accent btn-lg"
-              onClick={() => setEvalSubmitted(true)}
+              onClick={handleLevelEvalSubmit}
               disabled={Object.keys(evalAnswers).length < evalPreguntas.length}
               style={{ width: "100%", marginTop: "1rem" }}
             >
-              📊 Ver resultados
+              📊 Enviar evaluación final
             </button>
           ) : (
-            <div className={`quiz-result ${evalCorrectCount >= evalPreguntas.length / 2 ? "passed" : "failed"}`}>
+            <div className={`quiz-result ${enrollment?.final_score >= 7 ? "passed" : "failed"}`}>
               <p style={{ fontSize: "1.4rem", fontWeight: 700 }}>
-                {evalCorrectCount >= evalPreguntas.length * 0.7
-                  ? "🎓 ¡Excelente! Has aprobado la evaluación"
-                  : evalCorrectCount >= evalPreguntas.length / 2
-                  ? "👍 ¡Bien! Aprobaste, pero puedes mejorar"
-                  : "📚 Necesitas repasar algunos temas"}
+                {enrollment?.final_score >= 9
+                  ? "🎓 ¡Excelencia Académica! Distinción de Honor"
+                  : enrollment?.final_score >= 7
+                  ? "📜 ¡Aprobado! Calificas para la certificación"
+                  : "📚 Nota insuficiente para certificar (Mínimo 7.0)"}
               </p>
-              <p>
-                Acertaste {evalCorrectCount} de {evalPreguntas.length} preguntas
-                ({Math.round((evalCorrectCount / evalPreguntas.length) * 100)}%)
-              </p>
+              <div className="score-display">
+                <span className="score-label">Nota Final:</span>
+                <span className={`score-value ${enrollment?.final_score >= 7 ? "text-success" : "text-danger"}`}>
+                  {enrollment?.final_score} / 10
+                </span>
+              </div>
 
-              {evalCorrectCount < evalPreguntas.length && (
-                <div style={{ marginTop: "1rem" }}>
-                  <button className="btn btn-primary" onClick={handleGenerateRepaso} disabled={repasoLoading}>
-                    {repasoLoading ? "🪄 Analizando..." : "🪄 Generar Plan de Repaso IA"}
+              {enrollment?.final_score >= 7 ? (
+                <div style={{ marginTop: "1.5rem" }}>
+                  <button 
+                    className="btn btn-accent btn-lg" 
+                    onClick={async () => {
+                      setCertRequestLoading(true);
+                      try {
+                        await api.requestCertificate(courseId);
+                        alert("¡Certificado emitido con éxito! Lo encontrarás en tu sección de Logros.");
+                      } catch (e) {
+                        alert(e.message);
+                      } finally { setCertRequestLoading(false); }
+                    }}
+                    disabled={certRequestLoading}
+                    style={{ width: "100%" }}
+                  >
+                    {certRequestLoading ? "🏅 Generando..." : "🛡️ Obtener Certificado Oficial"}
                   </button>
-                  {repasoResult && (
-                    <div className="repaso-result glass" style={{ marginTop: "1rem", padding: "1rem", textAlign: "left", fontSize: "0.95rem" }}>
-                      <strong>Tu Tutor AI dice:</strong>
-                      <p style={{ marginTop: "0.5rem" }}>{repasoResult}</p>
-                    </div>
-                  )}
+                </div>
+              ) : (
+                <div style={{ marginTop: "1rem" }}>
+                  <button className="btn btn-primary" onClick={() => setEvalSubmitted(false)}>
+                    🔄 Reintentar Evaluación (Requiere Repaso)
+                  </button>
                 </div>
               )}
             </div>

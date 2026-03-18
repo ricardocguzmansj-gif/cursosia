@@ -165,6 +165,19 @@ export const api = {
     return data;
   },
 
+  saveFinalScore: async (courseId, score) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from("course_enrollments")
+      .update({ final_score: score })
+      .eq("user_id", user.id)
+      .eq("course_id", courseId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
   isEnrolled: async (courseId) => {
     const { data: { user } } = await supabase.auth.getUser();
     const { data, error } = await supabase
@@ -316,7 +329,7 @@ export const api = {
     // 2. Get Enrolled Courses with their progress
     const { data: enrollments } = await supabase
       .from("course_enrollments")
-      .select("*, courses(id, title, content, level, topic)")
+      .select("*, courses(id, title, content, level, topic), final_score")
       .eq("user_id", user.id);
 
     // 3. Get detailed progress counts
