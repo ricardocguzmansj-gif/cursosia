@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
+import { supabase } from "../lib/supabase";
 import TutorChat from "../components/TutorChat";
+
 import ReviewSection from "../components/ReviewSection";
 import DiscussionPanel from "../components/DiscussionPanel";
 import AudioPlayer from "../components/AudioPlayer";
@@ -61,13 +63,16 @@ export default function CourseView() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const curso = course?.content?.curso || course?.content;
+  const unidades = curso?.unidades || [];
+
   const goNext = () => {
-    const unidades = curso.unidades;
+    if (!curso || !unidades.length) return;
     if (currentUnit === -1) {
       handleNavigate(0, 0);
       return;
     }
-    const currentLessons = unidades[currentUnit].lecciones;
+    const currentLessons = unidades[currentUnit]?.lecciones || [];
     if (currentLesson < currentLessons.length - 1) {
       handleNavigate(currentUnit, currentLesson + 1);
     } else if (currentUnit < unidades.length - 1) {
@@ -79,8 +84,8 @@ export default function CourseView() {
   };
 
   const goPrev = () => {
+    if (!curso || !unidades.length) return;
     if (currentUnit === -2) {
-      const unidades = curso.unidades;
       const lastUnit = unidades.length - 1;
       handleNavigate(lastUnit, unidades[lastUnit].lecciones.length - 1);
       return;
@@ -89,12 +94,13 @@ export default function CourseView() {
     if (currentLesson > 0) {
       handleNavigate(currentUnit, currentLesson - 1);
     } else if (currentUnit > 0) {
-      const prevLessons = curso.unidades[currentUnit - 1].lecciones;
+      const prevLessons = unidades[currentUnit - 1].lecciones || [];
       handleNavigate(currentUnit - 1, prevLessons.length - 1);
     } else {
       setCurrentUnit(-1);
     }
   };
+
 
   if (loading) {
     return (
@@ -104,13 +110,12 @@ export default function CourseView() {
     );
   }
 
-  if (!course) return null;
+  if (!course || !curso) return null;
 
-  const curso = course.content.curso;
-  const unidades = curso.unidades;
-  const totalLessons = unidades.reduce((acc, u) => acc + u.lecciones.length, 0);
+  const totalLessons = unidades.reduce((acc, u) => acc + (u.lecciones?.length || 0), 0);
   const completedLessons = progress.filter(p => p.completed).length;
   const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
 
   return (
     <div className="course-viewer">
@@ -169,7 +174,12 @@ export default function CourseView() {
 
         {/* ===== OVERVIEW (-1) ===== */}
         {currentUnit === -1 && (
-          <CourseOverview curso={curso} course={course} onStart={() => handleNavigate(0, 0)} />
+          <CourseOverview 
+            curso={curso} 
+            course={course} 
+            onStart={() => handleNavigate(0, 0)} 
+            hasProgress={completedLessons > 0} 
+          />
         )}
 
         {/* ===== LESSON VIEW ===== */}
@@ -212,7 +222,7 @@ export default function CourseView() {
 }
 
 // ==================== COURSE OVERVIEW ====================
-function CourseOverview({ curso, course, onStart }) {
+function CourseOverview({ curso, course, onStart, hasProgress }) {
   return (
     <div className="course-overview">
       {/* Course Header */}
@@ -296,7 +306,7 @@ function CourseOverview({ curso, course, onStart }) {
 
       <div style={{ display: "flex", gap: "1rem", marginTop: "1.5rem" }}>
         <button className="btn btn-accent btn-lg" onClick={onStart} style={{ flex: 1 }}>
-          🚀 Comenzar curso
+          🚀 {hasProgress ? "Continuar curso" : "Comenzar curso"}
         </button>
         <button className="btn btn-outline btn-lg" onClick={() => exportScorm12(course || curso)} title="Exportar paquete SCORM 1.2">
           📦 SCORM
@@ -596,10 +606,32 @@ function FinalSections({ curso, goPrev, courseId, enrollment, setEnrollment }) {
 
       {/* Social Share & Reviews */}
       {evalSubmitted && evalCorrectCount >= evalPreguntas.length / 2 && (
-        <div style={{ display: "flex", justifyContent: "center", margin: "2rem 0" }}>
-          <LinkedInShare title={curso.title || curso.titulo} summary={curso.descripcion_corta || curso.descripcion} />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "2rem 0", padding: "2rem", background: "rgba(108, 92, 231, 0.1)", borderRadius: "16px", border: "1px solid rgba(108, 92, 231, 0.2)" }}>
+          <h3 style={{ marginBottom: "1rem" }}>🎉 ¡Felicitaciones! Has aprobado el curso.</h3>
+          <p style={{ marginBottom: "1.5rem", textAlign: "center" }}>
+            Puedes descargar tu certificado de participación ahora.<br/>
+            <strong>Costo del Certificado de Aprobación Oficial: $20 USD adicionales.</strong>
+          </p>
+          <div style={{ display: "flex", gap: "1rem" }}>
+            <button 
+              className="btn btn-secondary"
+              onClick={async () => {
+                if (window.confirm("¿Deseas pagar $20 USD por el Certificado de Aprobación Oficial? (Simulación)")) {
+                  try {
+                    await api.updateCertificatePayment(courseId, true);
+                    alert("¡Pago registrado! El certificado ha sido habilitado.");
+                    window.location.reload();
+                  } catch (e) { alert("Error al procesar el pago"); }
+                }
+              }}
+            >
+              Obtener Certificado Oficial ($20)
+            </button>
+            <LinkedInShare title={curso.title || curso.titulo} summary={curso.descripcion_corta || curso.descripcion} />
+          </div>
         </div>
       )}
+
 
       {/* Reviews */}
       <ReviewSection courseId={courseId} />

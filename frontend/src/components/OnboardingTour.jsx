@@ -77,7 +77,7 @@ export default function OnboardingTour({ onComplete }) {
   const current = STEPS[step];
 
   return (
-    <div className="onboarding-overlay">
+    <div className="onboarding-overlay" onClick={(e) => { if (e.target === e.currentTarget) finish(); }}>
       <div className="onboarding-tooltip glass">
         <div className="onboarding-step-count">
           {step + 1} / {STEPS.length}

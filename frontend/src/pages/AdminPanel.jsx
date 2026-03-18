@@ -7,9 +7,11 @@ export default function AdminPanel() {
   const [tab, setTab] = useState("dashboard");
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
+  const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [courseSearchTerm, setCourseSearchTerm] = useState("");
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -20,17 +22,33 @@ export default function AdminPanel() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [statsData, usersData] = await Promise.all([
+      const [statsData, usersData, coursesData] = await Promise.all([
         api.adminGetStats(),
-        api.adminListUsers()
+        api.adminListUsers(),
+        api.adminListCourses()
       ]);
       setStats(statsData);
       setUsers(usersData);
+      setCourses(coursesData);
     } catch (err) {
       console.error("Admin load error:", err);
       navigate("/dashboard");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleUserStatus = async (userId, currentBlocked) => {
+    const action = currentBlocked ? "desbloquear" : "bloquear";
+    if (!window.confirm(`¿Estás seguro de ${action} este usuario?`)) return;
+    setActionLoading(userId);
+    try {
+      await api.adminToggleUserStatus(userId, !currentBlocked);
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_blocked: !currentBlocked } : u));
+    } catch (err) {
+      alert(err.message || "Error al cambiar estado");
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -48,9 +66,38 @@ export default function AdminPanel() {
     }
   };
 
+  const handleApproveCourse = async (courseId, currentApproved) => {
+    setActionLoading(courseId);
+    try {
+      await api.adminApproveCourse(courseId, !currentApproved);
+      setCourses(prev => prev.map(c => c.id === courseId ? { ...c, is_approved: !currentApproved } : c));
+    } catch (err) {
+      alert(err.message || "Error al aprobar curso");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleToggleCourseStatus = async (courseId, currentBlocked) => {
+    setActionLoading(courseId);
+    try {
+      await api.adminToggleCourseStatus(courseId, !currentBlocked);
+      setCourses(prev => prev.map(c => c.id === courseId ? { ...c, is_blocked: !currentBlocked } : c));
+    } catch (err) {
+      alert(err.message || "Error al cambiar estado");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const filteredUsers = users.filter(u =>
     (u.full_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
     (u.email || "").toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredCourses = courses.filter(c =>
+    (c.title || "").toLowerCase().includes(courseSearchTerm.toLowerCase()) ||
+    (c.topic || "").toLowerCase().includes(courseSearchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -91,6 +138,12 @@ export default function AdminPanel() {
             onClick={() => setTab("users")}
           >
             👥 {t("admin_tab_users", "Usuarios")} ({users.length})
+          </button>
+          <button
+            className={`admin-tab ${tab === "courses" ? "active" : ""}`}
+            onClick={() => setTab("courses")}
+          >
+            📚 {t("admin_tab_courses", "Cursos")} ({courses.length})
           </button>
         </div>
 
@@ -331,29 +384,111 @@ export default function AdminPanel() {
                         <td className="xp-cell">{u.total_xp || 0}</td>
                         <td className="streak-cell">{u.current_streak || 0}</td>
                         <td className="date-cell">{u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}</td>
-                        <td className="actions-cell">
-                          {u.role !== "admin" ? (
+                         <td className="actions-cell">
+                          <div style={{ display: "flex", gap: "0.5rem" }}>
+                            {u.role !== "admin" ? (
+                              <button
+                                className="btn btn-sm btn-promote"
+                                onClick={() => handleRoleChange(u.id, "admin", u.full_name || u.email)}
+                                disabled={actionLoading === u.id}
+                              >
+                                {actionLoading === u.id ? "..." : `🛡️ Admin`}
+                              </button>
+                            ) : (
+                              <button
+                                className="btn btn-sm btn-demote"
+                                onClick={() => handleRoleChange(u.id, "alumno", u.full_name || u.email)}
+                                disabled={actionLoading === u.id}
+                              >
+                                {actionLoading === u.id ? "..." : `🎓 Alumno`}
+                              </button>
+                            )}
                             <button
-                              className="btn btn-sm btn-promote"
-                              onClick={() => handleRoleChange(u.id, "admin", u.full_name || u.email)}
-                              disabled={actionLoading === u.id}
+                              className={`btn btn-sm ${u.is_blocked ? "btn-success" : "btn-danger"}`}
+                              onClick={() => handleToggleUserStatus(u.id, u.is_blocked)}
+                              disabled={actionLoading === u.id || u.role === "admin"}
                             >
-                              {actionLoading === u.id ? "..." : `🛡️ ${t("admin_make_admin", "Hacer Admin")}`}
+                              {u.is_blocked ? "Desbloquear" : "Bloquear"}
                             </button>
-                          ) : (
-                            <button
-                              className="btn btn-sm btn-demote"
-                              onClick={() => handleRoleChange(u.id, "alumno", u.full_name || u.email)}
-                              disabled={actionLoading === u.id}
-                            >
-                              {actionLoading === u.id ? "..." : `🎓 ${t("admin_make_alumno", "Hacer Alumno")}`}
-                            </button>
-                          )}
+                          </div>
                         </td>
                       </tr>
                     ))}
                     {filteredUsers.length === 0 && (
                       <tr><td colSpan={7} className="empty-cell">{t("admin_no_results", "Sin resultados")}</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== COURSES TAB ===== */}
+        {tab === "courses" && (
+          <div className="admin-courses">
+            <div className="admin-search-bar glass">
+              <input
+                type="text"
+                placeholder={t("admin_search_courses", "🔍 Buscar por título o especialidad...")}
+                value={courseSearchTerm}
+                onChange={(e) => setCourseSearchTerm(e.target.value)}
+              />
+            </div>
+
+            <div className="admin-table-card glass">
+              <div className="admin-table-wrapper">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>{t("admin_col_title", "Título/Temática")}</th>
+                      <th>{t("admin_col_topic", "Especialidad")}</th>
+                      <th>{t("admin_col_level", "Nivel")}</th>
+                      <th>{t("admin_col_creator", "Creador")}</th>
+                      <th>{t("admin_col_status", "Estado")}</th>
+                      <th>Inscritos</th>
+                      <th>{t("admin_col_actions", "Acciones")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCourses.map((c) => (
+                      <tr key={c.id}>
+                        <td className="title-cell" onClick={() => navigate(`/course/${c.id}`)} style={{ cursor: "pointer" }}>
+                          <strong>{c.title}</strong>
+                        </td>
+                        <td>{c.topic}</td>
+                        <td><span className="badge badge-level">{c.level}</span></td>
+                        <td className="email-cell">{c.creator_email}</td>
+                        <td>
+                          <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
+                            {c.is_approved ? <span className="badge badge-success">Aprobado</span> : <span className="badge badge-warning">Pediente</span>}
+                            {c.is_published ? <span className="badge badge-info">Publicado</span> : <span className="badge badge-neutral">Borrador</span>}
+                            {c.is_blocked && <span className="badge badge-danger">Bloqueado</span>}
+                          </div>
+                        </td>
+                        <td>{c.enrollment_count}</td>
+                        <td className="actions-cell">
+                          <div style={{ display: "flex", gap: "0.5rem" }}>
+                            <button
+                              className={`btn btn-sm ${c.is_approved ? "btn-warning" : "btn-success"}`}
+                              onClick={() => handleApproveCourse(c.id, c.is_approved)}
+                              disabled={actionLoading === c.id}
+                            >
+                              {c.is_approved ? "Desaprobar" : "Aprobar"}
+                            </button>
+                            <button
+                              className={`btn btn-sm ${c.is_blocked ? "btn-success" : "btn-danger"}`}
+                              onClick={() => handleToggleCourseStatus(c.id, c.is_blocked)}
+                              disabled={actionLoading === c.id}
+                            >
+                              {c.is_blocked ? "Desbloquear" : "Bloquear"}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredCourses.length === 0 && (
+                      <tr><td colSpan={7} className="empty-cell">Sin cursos encontrados</td></tr>
                     )}
                   </tbody>
                 </table>

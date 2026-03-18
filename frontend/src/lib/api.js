@@ -125,11 +125,30 @@ export const api = {
   getPublishedCourses: async () => {
     const { data, error } = await supabase
       .from("courses")
-      .select("id, title, topic, level, profile, price, currency, language, slug, created_at")
+      .select(`
+        id, title, topic, level, profile, objective, price, currency, language, slug, content, created_at,
+        course_reviews (rating)
+      `)
       .eq("is_published", true)
-      .order("created_at", { ascending: false });
+      .eq("is_approved", true)
+      .eq("is_blocked", false)
+      .order("topic", { ascending: true })
+      .order("title", { ascending: true });
+    
     if (error) throw error;
-    return data;
+
+    // Process ratings
+    return (data || []).map(course => {
+      const ratings = course.course_reviews || [];
+      const avg = ratings.length 
+        ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length 
+        : 0;
+      return {
+        ...course,
+        avg_rating: avg,
+        review_count: ratings.length
+      };
+    });
   },
 
   publishCourse: async (id, slug) => {
@@ -143,6 +162,15 @@ export const api = {
     return data;
   },
 
+  canEnrollFree: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return true; // Let them try and fail at login
+    const { data, error } = await supabase.rpc('can_enroll_free', { p_user_id: user.id });
+    if (error) throw error;
+    return data;
+  },
+
+
   unpublishCourse: async (id) => {
     const { data, error } = await supabase
       .from("courses")
@@ -154,14 +182,14 @@ export const api = {
     return data;
   },
 
-  enrollInCourse: async (courseId) => {
+  enrollInCourse: async (courseId, source = 'free') => {
     const { data: { user } } = await supabase.auth.getUser();
     const { data, error } = await supabase
       .from("course_enrollments")
       .upsert({
         user_id: user.id,
         course_id: courseId,
-        source: 'free'
+        source: source
       }, { onConflict: 'user_id,course_id' })
       .select()
       .single();
@@ -181,6 +209,20 @@ export const api = {
     if (error) throw error;
     return data;
   },
+
+  updateCertificatePayment: async (courseId, paidStatus) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from("course_enrollments")
+      .update({ paid_certificate: paidStatus })
+      .eq("user_id", user.id)
+      .eq("course_id", courseId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
 
   isEnrolled: async (courseId) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -395,6 +437,39 @@ export const api = {
 
   adminGetStats: async () => {
     const { data, error } = await supabase.rpc('admin_platform_stats');
+    if (error) throw error;
+    return data;
+  },
+
+  adminListCourses: async () => {
+    const { data, error } = await supabase.rpc('admin_list_courses');
+    if (error) throw error;
+    return data;
+  },
+
+  adminApproveCourse: async (courseId, status) => {
+    const { data, error } = await supabase.rpc('admin_approve_course', {
+      target_course_id: courseId,
+      status: status
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  adminToggleCourseStatus: async (courseId, status) => {
+    const { data, error } = await supabase.rpc('admin_toggle_course_status', {
+      target_course_id: courseId,
+      status: status
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  adminToggleUserStatus: async (userId, status) => {
+    const { data, error } = await supabase.rpc('admin_toggle_user_status', {
+      target_user_id: userId,
+      status: status
+    });
     if (error) throw error;
     return data;
   }

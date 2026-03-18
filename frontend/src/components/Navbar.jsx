@@ -11,11 +11,23 @@ export default function Navbar() {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [role, setRole] = useState(null);
+  const [session, setSession] = useState(null);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    api.getUserRole().then(r => setRole(r));
-  }, []);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) api.getUserRole().then(r => setRole(r));
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) api.getUserRole().then(r => setRole(r));
+      else setRole(null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [theme]);
 
   const isAdmin = role === 'admin';
 
@@ -62,15 +74,27 @@ export default function Navbar() {
         <button onClick={toggleTheme} className="theme-toggle" aria-label="Toggle Theme" style={{ background: 'transparent', transition: 'transform 0.3s' }}>
           {theme === 'light' ? '🌙' : '☀️'}
         </button>
-        <Link to="/dashboard" className="nav-item">🏠 {t("nav_dashboard", "Dashboard")}</Link>
-        {isAdmin && <Link to="/generate" className="nav-item">✨ {t("nav_generate", "Generar")}</Link>}
-        <Link to="/catalog" className="nav-item">📚 {t("nav_catalog", "Catálogo")}</Link>
-        <Link to="/leaderboard" className="nav-item" title="Ranking">🏆</Link>
-        <Link to="/analytics" className="nav-item" title="Estadísticas">📊</Link>
-        <Link to="/affiliates" className="nav-item" title="Afiliados">🤝</Link>
-        {isAdmin && <Link to="/admin" className="nav-item nav-admin">🛡️ {t("nav_admin", "Admin")}</Link>}
-        <NotificationBell />
-        <button onClick={handleLogout}>{t("nav_logout")}</button>
+        {session ? (
+          <>
+            <Link to="/dashboard" className="nav-item">🏠 {t("nav_dashboard", "Dashboard")}</Link>
+            {isAdmin && <Link to="/generate" className="nav-item">✨ {t("nav_generate", "Generar")}</Link>}
+            <Link to="/catalog" className="nav-item">📚 {t("nav_catalog", "Catálogo")}</Link>
+            <Link to="/leaderboard" className="nav-item" title="Ranking">🏆</Link>
+            <Link to="/analytics" className="nav-item" title="Estadísticas">📊</Link>
+            <Link to="/affiliates" className="nav-item" title="Afiliados">🤝</Link>
+            {isAdmin && <Link to="/admin" className="nav-item nav-admin">🛡️ {t("nav_admin", "Admin")}</Link>}
+            <NotificationBell />
+            <button onClick={handleLogout}>{t("nav_logout")}</button>
+          </>
+        ) : (
+          <>
+            <Link to="/catalog" className="nav-item">📚 {t("nav_catalog", "Catálogo")}</Link>
+            <Link to="/login" className="nav-item">🔑 {t("nav_login", "Iniciar Sesión")}</Link>
+            <Link to="/register" className="nav-item btn btn-primary" style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}>
+              {t("nav_register", "Crear Cuenta")}
+            </Link>
+          </>
+        )}
       </div>
     </nav>
   );
