@@ -20,6 +20,7 @@ export default function CourseView() {
   const [currentLesson, setCurrentLesson] = useState(0);
   const [loading, setLoading] = useState(true);
   const [enrollment, setEnrollment] = useState(null);
+  const [lastPosition, setLastPosition] = useState(null);
 
   // Read continue position from URL params
   const searchParams = new URLSearchParams(window.location.search);
@@ -30,18 +31,29 @@ export default function CourseView() {
 
   const loadCourse = async () => {
     try {
-      const [courseData, progressData, enrollmentData] = await Promise.all([
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No autenticado");
+
+      const [courseData, progressData, enrollmentData, lastPos] = await Promise.all([
         api.getCourse(id),
         api.getProgress(id),
-        supabase.from("course_enrollments").select("*").eq("course_id", id).eq("user_id", (await supabase.auth.getUser()).data.user.id).single()
+        supabase.from("course_enrollments").select("*").eq("course_id", id).eq("user_id", user.id).single(),
+        api.getLastPosition(id)
       ]);
+
       setCourse(courseData);
       setProgress(progressData);
       setEnrollment(enrollmentData.data);
+      setLastPosition(lastPos);
+
       // If continue params exist, jump to that position
       if (initialUnit !== null) {
         setCurrentUnit(parseInt(initialUnit));
         setCurrentLesson(parseInt(initialLesson || '0'));
+      } else if (lastPos) {
+        // Auto-resume if last position is found
+        setCurrentUnit(lastPos.unit_index);
+        setCurrentLesson(lastPos.lesson_index);
       }
     } catch (err) {
       console.error(err);
@@ -177,7 +189,10 @@ export default function CourseView() {
           <CourseOverview 
             curso={curso} 
             course={course} 
-            onStart={() => handleNavigate(0, 0)} 
+            onStart={() => {
+              if (lastPosition) handleNavigate(lastPosition.unit_index, lastPosition.lesson_index);
+              else handleNavigate(0, 0);
+            }} 
             hasProgress={completedLessons > 0} 
           />
         )}
