@@ -340,6 +340,15 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Auto-enroll the creator so it appears in their dashboard
+    await supabase
+      .from('course_enrollments')
+      .insert({
+        user_id: user.id,
+        course_id: course.id,
+        source: 'free'
+      });
+
     return new Response(JSON.stringify(course), {
       headers: { ...headers, 'Content-Type': 'application/json' },
     });
