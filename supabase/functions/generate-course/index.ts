@@ -230,8 +230,8 @@ Deno.serve(async (req: Request) => {
     
     // OPTION C: Fallback Mechanism (Sistema de Fallback)
     const modelsToTry = isAdvanced 
-      ? ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'] // Avanzado intenta Pro primero
-      : ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash']; // Normal intenta Flash primero
+      ? ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-1.5-pro'] // Avanzado intenta Pro primero
+      : ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']; // Normal intenta Flash primero
 
     let geminiRes;
     let geminiData;
@@ -252,7 +252,6 @@ Deno.serve(async (req: Request) => {
               generationConfig: {
                 temperature: 0.7,
                 maxOutputTokens: 65536,
-                responseMimeType: 'application/json',
               },
             }),
           }
@@ -295,7 +294,21 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const courseContent = JSON.parse(text);
+    // Clean text by stripping markdown JSON fences if Gemini included them
+    const cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    let courseContent;
+    try {
+      courseContent = JSON.parse(cleanText);
+    } catch (e) {
+      return new Response(JSON.stringify({ 
+        error: 'Formato de curso inválido', 
+        details: [cleanText.substring(0, 500)] 
+      }), {
+        status: 502,
+        headers: { ...headers, 'Content-Type': 'application/json' },
+      });
+    }
 
     if (!courseContent.curso || !courseContent.curso.unidades) {
       return new Response(JSON.stringify({ error: 'Formato de curso inválido' }), {
