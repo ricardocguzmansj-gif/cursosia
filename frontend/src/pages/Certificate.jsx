@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import LinkedInShare from "../components/LinkedInShare";
 
 export default function Certificate() {
   const { code } = useParams();
@@ -88,6 +89,10 @@ export default function Certificate() {
 
         <div className="cert-footer">
           <p>CursosIA — Plataforma de cursos generados con Inteligencia Artificial</p>
+        </div>
+
+        <div style={{ marginTop: "2rem", display: "flex", justifyContent: "center" }}>
+          <LinkedInShare title={courseTitle} summary={`He completado el curso "${courseTitle}" con una puntuación de ${cert.score || 100}% en CursosIA.`} />
         </div>
       </div>
     </div>

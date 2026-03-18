@@ -44,6 +44,7 @@ FORMATO DE SALIDA (OBLIGATORIO JSON VÁLIDO):
       "(Cuarto objetivo específico)",
       "(Quinto objetivo específico)"
     ],
+    "guion_introduccion_profesor": "Guion detallado de 40-60 segundos para un avatar de video que presenta el curso, saluda al alumno y resume los beneficios del mismo.",
     "unidades": [
       {
         "titulo": "Unidad 1: Título atractivo",
@@ -53,6 +54,7 @@ FORMATO DE SALIDA (OBLIGATORIO JSON VÁLIDO):
             "titulo": "Lección 1",
             "idea_clave": "",
             "explicacion": "(4-8 frases adaptadas al nivel)",
+            "video_url": "(Busca un video de YouTube educativo y real sobre este tema específico usando Google Search. Si no encuentras uno exacto de calidad, deja vacío. Solo el link de YouTube)",
             "ejemplo_aplicado": "(ejemplo real y concreto)",
             "actividad_practica": "(consigna clara para hacer algo real)",
             "test_rapido": [

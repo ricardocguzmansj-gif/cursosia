@@ -302,4 +302,51 @@ export const api = {
     a.click();
     URL.revokeObjectURL(url);
   },
+
+  getDashboardData: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    // 1. Get Profile (XP, Streak, Badges)
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    // 2. Get Enrolled Courses with their progress
+    const { data: enrollments } = await supabase
+      .from("course_enrollments")
+      .select("*, courses(id, title, content, level, topic)")
+      .eq("user_id", user.id);
+
+    // 3. Get detailed progress counts
+    const { data: progress } = await supabase
+      .from("course_progress")
+      .select("course_id, unit_index, lesson_index, completed")
+      .eq("user_id", user.id);
+
+    return { profile, enrollments, progress };
+  },
+
+  upgradeToAIVideo: async (courseId) => {
+    // In a real scenario, this would check a payment status with MercadoPago/Stripe
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from("courses")
+      .update({ is_ai_video_enabled: true })
+      .eq("id", courseId)
+      .eq("user_id", user.id); // Simple security check
+    
+    if (error) throw error;
+    return data;
+  },
+
+  generateAIVideoScript: async (courseId) => {
+    // This would call an Edge Function to generate the script/video
+    const { data: course } = await supabase.from("courses").select("*").eq("id", courseId).single();
+    // Logic to call HeyGen/D-ID would go here or in an Edge Function
+    return "Hola, soy tu profesor IA. Bienvenido al curso...";
+  }
 };
+
+

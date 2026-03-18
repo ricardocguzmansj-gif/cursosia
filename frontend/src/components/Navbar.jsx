@@ -58,12 +58,12 @@ export default function Navbar() {
         <button onClick={toggleTheme} className="theme-toggle" aria-label="Toggle Theme" style={{ background: 'transparent', transition: 'transform 0.3s' }}>
           {theme === 'light' ? '🌙' : '☀️'}
         </button>
-        <Link to="/dashboard">{t("nav_dashboard")}</Link>
-        <Link to="/generate">✨ {t("nav_dashboard") === "Mis Cursos" ? "Generar" : t("nav_dashboard") === "My Courses" ? "Generate" : "Gerar"}</Link>
-        <Link to="/catalog">📚 {t("nav_dashboard") === "Mis Cursos" ? "Catálogo" : t("nav_dashboard") === "My Courses" ? "Catalog" : "Catálogo"}</Link>
-        <Link to="/analytics">📊</Link>
-        <Link to="/affiliates">🤝</Link>
-        <Link to="/leaderboard">🏆</Link>
+        <Link to="/dashboard" className="nav-item">🏠 {t("nav_dashboard", "Dashboard")}</Link>
+        <Link to="/generate" className="nav-item">✨ {t("nav_generate", "Generar")}</Link>
+        <Link to="/catalog" className="nav-item">📚 {t("nav_catalog", "Catálogo")}</Link>
+        <Link to="/leaderboard" className="nav-item" title="Ranking">🏆</Link>
+        <Link to="/analytics" className="nav-item" title="Estadísticas">📊</Link>
+        <Link to="/affiliates" className="nav-item" title="Afiliados">🤝</Link>
         <NotificationBell />
         <button onClick={handleLogout}>{t("nav_logout")}</button>
       </div>

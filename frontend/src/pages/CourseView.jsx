@@ -4,6 +4,10 @@ import { api } from "../lib/api";
 import TutorChat from "../components/TutorChat";
 import ReviewSection from "../components/ReviewSection";
 import DiscussionPanel from "../components/DiscussionPanel";
+import AudioPlayer from "../components/AudioPlayer";
+import LinkedInShare from "../components/LinkedInShare";
+import VideoPlayer from "../components/VideoPlayer";
+import { exportScorm12 } from "../lib/ScormExport";
 
 export default function CourseView() {
   const { id } = useParams();
@@ -214,6 +218,43 @@ function CourseOverview({ curso, course, onStart }) {
         </div>
       </div>
 
+      {/* AI Tutor Premium Section */}
+      <div className="ai-tutor-section glass">
+        {course.is_ai_video_enabled ? (
+          <div className="ai-tutor-player">
+            <h3>👨‍🏫 Tu Profesor IA</h3>
+            {course.intro_video_url ? (
+              <VideoPlayer url={course.intro_video_url} />
+            ) : (
+              <div className="video-generating-placeholder">
+                <p>⏳ El profesor está preparando su clase magistral personalizada para ti...</p>
+                <div className="loading-spinner-sm"></div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="ai-tutor-promo">
+            <div className="promo-content">
+              <h3>💎 Desbloquea tu Tutor IA Personalizado</h3>
+              <p>¿Quieres que un profesor IA te dicte este curso? Por un pago único de 9.99 USD, generaremos videos de un avatar humano explicando cada lección solo para ti.</p>
+              <button 
+                className="btn btn-accent"
+                onClick={async () => {
+                  if (window.confirm("¿Quieres desbloquear el Tutor IA para este curso? (Simulación de pago)")) {
+                    try {
+                      await api.upgradeToAIVideo(course.id);
+                      window.location.reload();
+                    } catch (e) { alert("Error al procesar el pago"); }
+                  }
+                }}
+              >
+                🚀 Desbloquear Tutor IA
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Learning Objectives */}
       {curso.objetivos_aprendizaje && curso.objetivos_aprendizaje.length > 0 && (
         <div className="objectives-card glass">
@@ -244,9 +285,14 @@ function CourseOverview({ curso, course, onStart }) {
         </div>
       </div>
 
-      <button className="btn btn-accent btn-lg" onClick={onStart} style={{ width: "100%", marginTop: "1.5rem" }}>
-        🚀 Comenzar curso
-      </button>
+      <div style={{ display: "flex", gap: "1rem", marginTop: "1.5rem" }}>
+        <button className="btn btn-accent btn-lg" onClick={onStart} style={{ flex: 1 }}>
+          🚀 Comenzar curso
+        </button>
+        <button className="btn btn-outline btn-lg" onClick={() => exportScorm12(course || curso)} title="Exportar paquete SCORM 1.2">
+          📦 SCORM
+        </button>
+      </div>
     </div>
   );
 }
@@ -297,7 +343,13 @@ function LessonView({ curso, currentUnit, currentLesson, courseId, isLessonCompl
           <span className="lesson-num">{currentUnit + 1}.{currentLesson + 1}</span>
           {leccion.titulo}
         </h1>
+        <div style={{ marginTop: "1rem" }}>
+          <AudioPlayer text={leccion.explicacion} />
+        </div>
       </div>
+
+      {/* Video Block */}
+      {leccion.video_url && <VideoPlayer url={leccion.video_url} />}
 
       {/* Idea Clave Block */}
       {leccion.idea_clave && (
@@ -368,6 +420,23 @@ function LessonView({ curso, currentUnit, currentLesson, courseId, isLessonCompl
 function FinalSections({ curso, goPrev, courseId }) {
   const [evalAnswers, setEvalAnswers] = useState({});
   const [evalSubmitted, setEvalSubmitted] = useState(false);
+  const [repasoLoading, setRepasoLoading] = useState(false);
+  const [repasoResult, setRepasoResult] = useState("");
+
+  const handleGenerateRepaso = async () => {
+    setRepasoLoading(true);
+    const failed = evalPreguntas.filter((q, i) => evalAnswers[i] !== q.respuesta_correcta);
+    const textOfFailed = failed.map((q, i) => `${i+1}) Pregunta: ${q.pregunta} | Tu error: ${evalAnswers[i]} | Correcta: ${q.respuesta_correcta}`).join("\n");
+    const prompt = `Fallé estas preguntas:\n${textOfFailed}\nGenera una pequeña y directa guía de repaso (máx 3 párrafos) exclusiva sobre mis fallos. Sé tutor claro y alentador.`;
+    try {
+      const response = await api.chatWithTutor(courseId, prompt, localStorage.getItem('access_token'));
+      setRepasoResult(response);
+    } catch {
+      setRepasoResult("Hubo un error al generar tu repaso. Revisa el temario y vuelve a intentarlo.");
+    } finally {
+      setRepasoLoading(false);
+    }
+  };
 
   const evalPreguntas = curso.evaluacion_final?.preguntas || [];
   const proyectos = curso.proyecto_final;
@@ -437,6 +506,20 @@ function FinalSections({ curso, goPrev, courseId }) {
                 Acertaste {evalCorrectCount} de {evalPreguntas.length} preguntas
                 ({Math.round((evalCorrectCount / evalPreguntas.length) * 100)}%)
               </p>
+
+              {evalCorrectCount < evalPreguntas.length && (
+                <div style={{ marginTop: "1rem" }}>
+                  <button className="btn btn-primary" onClick={handleGenerateRepaso} disabled={repasoLoading}>
+                    {repasoLoading ? "🪄 Analizando..." : "🪄 Generar Plan de Repaso IA"}
+                  </button>
+                  {repasoResult && (
+                    <div className="repaso-result glass" style={{ marginTop: "1rem", padding: "1rem", textAlign: "left", fontSize: "0.95rem" }}>
+                      <strong>Tu Tutor AI dice:</strong>
+                      <p style={{ marginTop: "0.5rem" }}>{repasoResult}</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -480,6 +563,13 @@ function FinalSections({ curso, goPrev, courseId }) {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* Social Share & Reviews */}
+      {evalSubmitted && evalCorrectCount >= evalPreguntas.length / 2 && (
+        <div style={{ display: "flex", justifyContent: "center", margin: "2rem 0" }}>
+          <LinkedInShare title={curso.title || curso.titulo} summary={curso.descripcion_corta || curso.descripcion} />
         </div>
       )}
 
