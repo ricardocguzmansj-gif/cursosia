@@ -493,7 +493,14 @@ export default function AdminPanel() {
                         </td>
                         <td>{c.enrollment_count}</td>
                         <td className="actions-cell">
-                          <div style={{ display: "flex", gap: "0.5rem" }}>
+                          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                            <button
+                              className="btn btn-sm btn-outline"
+                              onClick={() => navigate(`/admin/course/${c.id}/edit`)}
+                              style={{ borderColor: "var(--accent-glow)", color: "var(--accent-glow)" }}
+                            >
+                              ✏️ Editar
+                            </button>
                             <button
                               className={`btn btn-sm ${c.is_approved ? "btn-warning" : "btn-success"}`}
                               onClick={() => handleApproveCourse(c.id, c.is_approved)}

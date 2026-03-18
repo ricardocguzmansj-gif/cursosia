@@ -72,6 +72,23 @@ export const api = {
     return { message: "Curso eliminado" };
   },
 
+  updateCourseData: async (courseId, updates) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("No autorizado");
+
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+    if (profile?.role !== "admin") throw new Error("No autorizado");
+
+    const { data, error } = await supabase
+      .from("courses")
+      .update(updates)
+      .eq("id", courseId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
   // Progress (direct Supabase with RLS)
   saveProgress: async (course_id, unit_index, lesson_index, score) => {
     const { data: { user } } = await supabase.auth.getUser();

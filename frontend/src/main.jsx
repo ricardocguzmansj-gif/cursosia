@@ -22,6 +22,7 @@ const Analytics = React.lazy(() => import("./pages/Analytics"));
 const AffiliateDashboard = React.lazy(() => import("./pages/AffiliateDashboard"));
 const Leaderboard = React.lazy(() => import("./pages/Leaderboard"));
 const AdminPanel = React.lazy(() => import("./pages/AdminPanel"));
+const CourseEditor = React.lazy(() => import("./pages/CourseEditor"));
 const PaymentResult = React.lazy(() => import("./pages/PaymentResult"));
 const JobBoard = React.lazy(() => import("./pages/JobBoard"));
 
@@ -121,6 +122,18 @@ function App() {
               <AppLayout>
                 <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
                   <AdminPanel />
+                </React.Suspense>
+              </AppLayout>
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/course/:id/edit"
+          element={
+            <AdminRoute session={session}>
+              <AppLayout>
+                <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+                  <CourseEditor />
                 </React.Suspense>
               </AppLayout>
             </AdminRoute>

@@ -170,6 +170,13 @@ export default function CourseView() {
     <div className="course-viewer">
       {/* Sidebar */}
       <aside className="course-sidebar">
+        {isAdmin && (
+          <div style={{ marginBottom: "1rem" }}>
+            <Link to={`/admin/course/${id}/edit`} className="btn btn-primary" style={{ width: "100%", textAlign: "center", display: "block" }}>
+              🛠️ Editar Contenido (Admin)
+            </Link>
+          </div>
+        )}
         <h2>{curso.titulo}</h2>
 
         <div className="progress-bar">
