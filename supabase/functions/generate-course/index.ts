@@ -68,16 +68,19 @@ FORMATO DE SALIDA (OBLIGATORIO JSON VÁLIDO):
             "explicacion": "(4-8 frases adaptadas al nivel)",
             "video_url": "(Busca un video de YouTube educativo y real sobre este tema específico usando Google Search. Si no encuentras uno exacto de calidad, deja vacío. Solo el link de YouTube)",
             "ejemplo_aplicado": "(ejemplo real y concreto)",
-            "actividad_practica": "(consigna clara para hacer algo real)",
-            "test_rapido": [
-              {
-                "pregunta": "",
-                "opciones": ["A) ...", "B) ...", "C) ...", "D) ..."],
-                "respuesta_correcta": "A) ..."
-              }
-            ]
+            "actividad_practica": "(consigna clara para hacer algo real)"
           }
-        ]
+        ],
+        "evaluacion_unidad": {
+          "descripcion": "Evaluación de los conceptos aprendidos en esta unidad",
+          "preguntas": [
+            {
+              "pregunta": "(Mínimo 1 pregunta sobre la lección 1)",
+              "opciones": ["A) ...", "B) ...", "C) ...", "D) ..."],
+              "respuesta_correcta": "A) ..."
+            }
+          ]
+        }
       }
     ],
     "evaluacion_final": {
@@ -108,7 +111,7 @@ REGLAS DE EXCELENCIA:
 1. Crear entre 7 y 10 unidades para máxima profundidad académica.
 2. Cada unidad debe tener entre 4 y 6 lecciones progresivas.
 3. La dificultad debe escalar hasta el nivel de maestría/experticia solicitado.
-4. Cada lección incluye un test de 5 preguntas de alta calidad.
+4. Al final de cada unidad DEBE haber una evaluación de unidad ('evaluacion_unidad') con un mínimo de 1 pregunta por cada lección impartida y un máximo de 3 por lección. (NO usar test_rapido en lecciones).
 5. La evaluación final tiene 12-15 preguntas que validan todas las competencias del curso.
 6. El proyecto final debe ser una aplicación práctica de alto impacto o una propuesta de investigación.
 7. Citar obligatoriamente al menos 6 fuentes académicas, científicas o profesionales REALES (libros, papers, sitios oficiales).

@@ -22,6 +22,7 @@ export default function CourseView() {
   const [loading, setLoading] = useState(true);
   const [enrollment, setEnrollment] = useState(null);
   const [lastPosition, setLastPosition] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Read continue position from URL params
   const searchParams = new URLSearchParams(window.location.search);
@@ -39,6 +40,7 @@ export default function CourseView() {
         promises.push(api.getProgress(id));
         promises.push(supabase.from("course_enrollments").select("*").eq("course_id", id).eq("user_id", user.id).single());
         promises.push(api.getLastPosition(id));
+        promises.push(api.isAdmin());
       }
 
       const results = await Promise.all(promises);
@@ -50,6 +52,7 @@ export default function CourseView() {
         setEnrollment(results[2]?.data);
         const lastPos = results[3];
         setLastPosition(lastPos);
+        setIsAdmin(results[4] || false);
 
         if (initialUnit !== null) {
           setCurrentUnit(parseInt(initialUnit));
@@ -70,10 +73,33 @@ export default function CourseView() {
     }
   };
 
+  const curso = parseCourseContent(course);
+  const unidades = curso?.unidades || [];
+
   const isLessonCompleted = (unitIdx, lessonIdx) => {
     return progress.some(
       p => p.unit_index === unitIdx && p.lesson_index === lessonIdx && p.completed
     );
+  };
+
+  const isStepUnlocked = (unitIdx, lessonIdx) => {
+    if (isAdmin) return true;
+    if (unitIdx === -1) return true; 
+    if (unitIdx === 0 && lessonIdx === 0) return true;
+
+    if (unitIdx === -2) {
+      const lastUnit = unidades.length - 1;
+      return isLessonCompleted(lastUnit, unidades[lastUnit].lecciones.length);
+    }
+
+    let prevU = unitIdx;
+    let prevL = lessonIdx - 1;
+    if (prevL < 0) {
+      prevU = unitIdx - 1;
+      prevL = unidades[prevU]?.lecciones?.length || 0; 
+    }
+
+    return isLessonCompleted(prevU, prevL);
   };
 
   const handleNavigate = (unitIdx, lessonIdx) => {
@@ -81,13 +107,14 @@ export default function CourseView() {
       toast("Para acceder a las lecciones, primero debes inscribirte en el curso.", { icon: "🔒" });
       return;
     }
+    if (!isStepUnlocked(unitIdx, lessonIdx)) {
+      toast.error("Debes completar la lección o evaluación anterior para acceder a este paso.", { icon: "🔒" });
+      return;
+    }
     setCurrentUnit(unitIdx);
     setCurrentLesson(lessonIdx);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-
-  const curso = parseCourseContent(course);
-  const unidades = curso?.unidades || [];
 
   const goNext = () => {
     if (!curso || !unidades.length) return;
@@ -96,12 +123,11 @@ export default function CourseView() {
       return;
     }
     const currentLessons = unidades[currentUnit]?.lecciones || [];
-    if (currentLesson < currentLessons.length - 1) {
+    if (currentLesson < currentLessons.length) {
       handleNavigate(currentUnit, currentLesson + 1);
     } else if (currentUnit < unidades.length - 1) {
       handleNavigate(currentUnit + 1, 0);
     } else {
-      // Last lesson - go to final evaluation
       setCurrentUnit(-2);
     }
   };
@@ -110,7 +136,7 @@ export default function CourseView() {
     if (!curso || !unidades.length) return;
     if (currentUnit === -2) {
       const lastUnit = unidades.length - 1;
-      handleNavigate(lastUnit, unidades[lastUnit].lecciones.length - 1);
+      handleNavigate(lastUnit, unidades[lastUnit].lecciones.length);
       return;
     }
     if (currentUnit === -1) return;
@@ -118,7 +144,7 @@ export default function CourseView() {
       handleNavigate(currentUnit, currentLesson - 1);
     } else if (currentUnit > 0) {
       const prevLessons = unidades[currentUnit - 1].lecciones || [];
-      handleNavigate(currentUnit - 1, prevLessons.length - 1);
+      handleNavigate(currentUnit - 1, prevLessons.length);
     } else {
       setCurrentUnit(-1);
     }
@@ -167,26 +193,50 @@ export default function CourseView() {
               <span className="unit-number">Unidad {uIdx + 1}</span>
               {unidad.titulo}
             </div>
-            {unidad.lecciones.map((lec, lIdx) => (
-              <button
-                key={lIdx}
-                className={`sidebar-lesson ${
-                  currentUnit === uIdx && currentLesson === lIdx ? "active" : ""
-                } ${isLessonCompleted(uIdx, lIdx) ? "completed" : ""}`}
-                onClick={() => handleNavigate(uIdx, lIdx)}
-              >
-                <span className="lesson-status"></span>
-                <span className="lesson-number">{uIdx + 1}.{lIdx + 1}</span>
-                {lec.titulo}
-              </button>
-            ))}
+            {unidad.lecciones.map((lec, lIdx) => {
+              const isActive = currentUnit === uIdx && currentLesson === lIdx;
+              const isCompleted = isLessonCompleted(uIdx, lIdx);
+              const isUnlocked = isStepUnlocked(uIdx, lIdx);
+              return (
+                <button
+                  key={lIdx}
+                  className={`sidebar-lesson ${isActive ? "active" : ""} ${isCompleted ? "completed" : ""} ${!isUnlocked ? "locked" : ""}`}
+                  onClick={() => isUnlocked && handleNavigate(uIdx, lIdx)}
+                  style={{ opacity: isUnlocked ? 1 : 0.6, cursor: isUnlocked ? 'pointer' : 'not-allowed' }}
+                >
+                  <span className="lesson-status">{isCompleted ? "✓" : isUnlocked ? "○" : "🔒"}</span>
+                  <span className="lesson-number">{uIdx + 1}.{lIdx + 1}</span>
+                  {lec.titulo}
+                </button>
+              );
+            })}
+            
+            {/* Unit Evaluation Item */}
+            {(() => {
+              const evalIdx = unidad.lecciones.length;
+              const isActive = currentUnit === uIdx && currentLesson === evalIdx;
+              const isCompleted = isLessonCompleted(uIdx, evalIdx);
+              const isUnlocked = isStepUnlocked(uIdx, evalIdx);
+              return (
+                <button
+                  className={`sidebar-lesson ${isActive ? "active" : ""} ${isCompleted ? "completed" : ""} ${!isUnlocked ? "locked" : ""}`}
+                  onClick={() => isUnlocked && handleNavigate(uIdx, evalIdx)}
+                  style={{ opacity: isUnlocked ? 1 : 0.6, cursor: isUnlocked ? 'pointer' : 'not-allowed', marginTop: '4px', background: 'var(--bg-glass-heavy)' }}
+                >
+                  <span className="lesson-status">{isCompleted ? "✓" : isUnlocked ? "○" : "🔒"}</span>
+                  <span className="lesson-number">📝</span>
+                  Evaluación de Unidad
+                </button>
+              );
+            })()}
           </div>
         ))}
 
         {/* Final sections link */}
         <button
-          className={`sidebar-lesson overview-link ${currentUnit === -2 ? "active" : ""}`}
-          onClick={() => setCurrentUnit(-2)}
+          className={`sidebar-lesson overview-link ${currentUnit === -2 ? "active" : ""} ${!isStepUnlocked(-2, 0) ? "locked" : ""}`}
+          onClick={() => isStepUnlocked(-2, 0) && setCurrentUnit(-2)}
+          style={{ opacity: isStepUnlocked(-2, 0) ? 1 : 0.6, cursor: isStepUnlocked(-2, 0) ? 'pointer' : 'not-allowed' }}
         >
           🏁 Evaluación y proyecto final
         </button>
@@ -212,27 +262,44 @@ export default function CourseView() {
           />
         )}
 
-        {/* ===== LESSON VIEW ===== */}
+        {/* ===== LESSONS AND UNIT EVALUATIONS (0+) ===== */}
         {currentUnit >= 0 && (
           <>
-            <LessonView
-              curso={curso}
-              currentUnit={currentUnit}
-              currentLesson={currentLesson}
-              courseId={id}
-              isLessonCompleted={isLessonCompleted}
-              progress={progress}
-              setProgress={setProgress}
-              goNext={goNext}
-              goPrev={goPrev}
-              unidades={unidades}
-            />
-            <TutorChat
-              courseId={id}
-              unitIndex={currentUnit}
-              lessonIndex={currentLesson}
-              accessToken={localStorage.getItem('access_token')}
-            />
+            {currentLesson < unidades[currentUnit].lecciones.length ? (
+              <LessonView 
+                curso={curso}
+                currentUnit={currentUnit}
+                currentLesson={currentLesson}
+                courseId={id}
+                isLessonCompleted={isLessonCompleted}
+                progress={progress}
+                setProgress={setProgress}
+                goNext={goNext}
+                goPrev={goPrev}
+                unidades={unidades}
+              />
+            ) : (
+              <UnitEvaluationView 
+                unidadActual={unidades[currentUnit]}
+                currentUnit={currentUnit}
+                currentLesson={currentLesson}
+                courseId={id}
+                isLessonCompleted={isLessonCompleted}
+                progress={progress}
+                setProgress={setProgress}
+                goNext={goNext}
+              />
+            )}
+            
+            {/* Tutor only in regular lessons */}
+            {currentLesson < unidades[currentUnit].lecciones.length && (
+              <TutorChat
+                courseId={id}
+                unitIndex={currentUnit}
+                lessonIndex={currentLesson}
+                accessToken={localStorage.getItem('access_token')}
+              />
+            )}
           </>
         )}
 
@@ -245,6 +312,7 @@ export default function CourseView() {
             enrollment={enrollment} 
             setEnrollment={setEnrollment}
             loadCourseData={loadCourseData}
+            progress={progress}
           />
         )}
       </main>
@@ -403,26 +471,6 @@ function LessonView({ curso, currentUnit, currentLesson, courseId, isLessonCompl
         </div>
       )}
 
-      {/* Test Block */}
-      {leccion.test_rapido && leccion.test_rapido.length > 0 && (
-        <QuizWidget
-          questions={leccion.test_rapido}
-          courseId={courseId}
-          unitIndex={currentUnit}
-          lessonIndex={currentLesson}
-          onComplete={(score) => {
-            if (!isLessonCompleted(currentUnit, currentLesson)) {
-              setProgress([...progress, {
-                unit_index: currentUnit,
-                lesson_index: currentLesson,
-                completed: true,
-                score
-              }]);
-            }
-          }}
-        />
-      )}
-
       <DiscussionPanel courseId={courseId} unitIndex={currentUnit} lessonIndex={currentLesson} />
 
       {/* Navigation */}
@@ -431,7 +479,83 @@ function LessonView({ curso, currentUnit, currentLesson, courseId, isLessonCompl
           ← Lección anterior
         </button>
         <button className="btn btn-primary" onClick={goNext}>
-          Siguiente lección →
+          Continuar →
+        </button>
+      </div>
+    </>
+  );
+}
+
+// ==================== UNIT EVALUATION VIEW ====================
+
+function UnitEvaluationView({ unidadActual, currentUnit, currentLesson, courseId, isLessonCompleted, progress, setProgress, goNext }) {
+  const [questions, setQuestions] = useState([]);
+
+  useEffect(() => {
+    if (!unidadActual) return;
+    if (unidadActual.evaluacion_unidad && unidadActual.evaluacion_unidad.preguntas) {
+      setQuestions(unidadActual.evaluacion_unidad.preguntas);
+    } else {
+      // Retrocompatibility: extract up to 3 from each test_rapido
+      let extracted = [];
+      (unidadActual.lecciones || []).forEach(l => {
+        if (l.test_rapido && l.test_rapido.length > 0) {
+          extracted = [...extracted, ...l.test_rapido.slice(0, 3)];
+        }
+      });
+      setQuestions(extracted);
+    }
+  }, [unidadActual]);
+
+  if (!questions || questions.length === 0) {
+    // If absolutely no questions, auto complete
+    useEffect(() => {
+      if (!isLessonCompleted(currentUnit, currentLesson)) {
+        api.saveProgress(courseId, currentUnit, currentLesson, null).then(() => {
+          setProgress(prev => [...prev, { unit_index: currentUnit, lesson_index: currentLesson, completed: true, score: null }]);
+        });
+      }
+    }, []);
+    return (
+      <div className="lesson-header">
+        <h1>Unidad Completada</h1>
+        <button className="btn btn-primary" onClick={goNext}>Continuar →</button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="lesson-header">
+        <h1>📝 Evaluación de Unidad {currentUnit + 1}</h1>
+        <p style={{ color: "var(--text-secondary)", marginTop: "0.5rem", fontSize: "1.1rem" }}>
+          Responde correctamente al menos al 70% de las preguntas para desbloquear la siguiente unidad.
+        </p>
+      </div>
+      
+      <QuizWidget
+        questions={questions}
+        courseId={courseId}
+        unitIndex={currentUnit}
+        lessonIndex={currentLesson}
+        onComplete={(score) => {
+          if (!isLessonCompleted(currentUnit, currentLesson)) {
+            setProgress([...progress, {
+              unit_index: currentUnit,
+              lesson_index: currentLesson,
+              completed: true,
+              score
+            }]);
+          }
+        }}
+      />
+      <div className="lesson-nav" style={{ marginTop: '2rem' }}>
+        <button 
+          className="btn btn-primary" 
+          onClick={goNext} 
+          disabled={!isLessonCompleted(currentUnit, currentLesson)}
+        >
+          Siguiente unidad →
         </button>
       </div>
     </>
@@ -439,7 +563,7 @@ function LessonView({ curso, currentUnit, currentLesson, courseId, isLessonCompl
 }
 
 // ==================== FINAL SECTIONS ====================
-function FinalSections({ curso, goPrev, courseId, enrollment, setEnrollment, loadCourseData }) {
+function FinalSections({ curso, goPrev, courseId, enrollment, setEnrollment, loadCourseData, progress }) {
   const [evalAnswers, setEvalAnswers] = useState({});
   const [evalSubmitted, setEvalSubmitted] = useState(enrollment?.final_score > 0);
   const [repasoLoading, setRepasoLoading] = useState(false);
@@ -452,9 +576,19 @@ function FinalSections({ curso, goPrev, courseId, enrollment, setEnrollment, loa
 
   const handleLevelEvalSubmit = async () => {
     const correct = evalPreguntas.filter((q, i) => evalAnswers[i] === q.respuesta_correcta).length;
-    // Score on a scale of 0-10
-    const rawScore = (correct / evalPreguntas.length) * 10;
-    const finalScore = Math.round(rawScore * 10) / 10; // 1 decimal
+    const examScore = (correct / evalPreguntas.length) * 10;
+    
+    // Average unit scores (where score is not null)
+    // Avoid double counting (final section itself if score was already here? No, final section is not in `progress` array, it is in `enrollment.final_score`)
+    const unitScores = progress.filter(p => typeof p.score === "number").map(p => p.score);
+    let finalScore = examScore;
+    if (unitScores.length > 0) {
+       const avgUnitScore = unitScores.reduce((a, b) => a + b, 0) / unitScores.length;
+       const rawScore = (examScore * 0.6) + (avgUnitScore * 0.4); // 60% Final Exam, 40% Units
+       finalScore = Math.round(rawScore * 10) / 10;
+    } else {
+       finalScore = Math.round(examScore * 10) / 10;
+    }
 
     try {
       const updatedEnrollment = await api.saveFinalScore(courseId, finalScore);
