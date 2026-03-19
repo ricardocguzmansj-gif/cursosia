@@ -9,6 +9,7 @@ export default function AdminPanel() {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -23,14 +24,16 @@ export default function AdminPanel() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [statsData, usersData, coursesData] = await Promise.all([
+      const [statsData, usersData, coursesData, jobsData] = await Promise.all([
         api.adminGetStats(),
         api.adminListUsers(),
-        api.adminListCourses()
+        api.adminListCourses(),
+        api.getAllJobsAdmin()
       ]);
       setStats(statsData);
       setUsers(usersData);
       setCourses(coursesData);
+      setJobs(jobsData);
     } catch (err) {
       console.error("Admin load error:", err);
       navigate("/dashboard");
@@ -115,6 +118,19 @@ export default function AdminPanel() {
     }
   };
 
+  const handleUpdateJobStatus = async (jobId, newStatus) => {
+    setActionLoading(jobId);
+    try {
+      await api.updateJobStatus(jobId, newStatus);
+      setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: newStatus } : j));
+      toast.success(newStatus === "open" ? "Oferta publicada" : "Oferta rechazada/oculta");
+    } catch (err) {
+      toast.error("Error al actualizar oferta");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const filteredUsers = users.filter(u =>
     (u.full_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
     (u.email || "").toLowerCase().includes(searchTerm.toLowerCase())
@@ -169,6 +185,12 @@ export default function AdminPanel() {
             onClick={() => setTab("courses")}
           >
             📚 {t("admin_tab_courses", "Cursos")} ({courses.length})
+          </button>
+          <button
+            className={`admin-tab ${tab === "jobs" ? "active" : ""}`}
+            onClick={() => setTab("jobs")}
+          >
+            💼 Empleos ({jobs.length})
           </button>
         </div>
 
@@ -521,6 +543,88 @@ export default function AdminPanel() {
                     ))}
                     {filteredCourses.length === 0 && (
                       <tr><td colSpan={7} className="empty-cell">Sin cursos encontrados</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== JOBS TAB ===== */}
+        {tab === "jobs" && (
+          <div className="admin-jobs">
+            <div className="admin-table-card glass" style={{ marginBottom: "2rem" }}>
+              <h3>⏳ Ofertas Pendientes de Revisión</h3>
+              <div className="admin-table-wrapper">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Título</th>
+                      <th>Empresa</th>
+                      <th>Fecha</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {jobs.filter(j => j.status === 'pending').map(j => (
+                      <tr key={j.id}>
+                        <td><strong>{j.title}</strong></td>
+                        <td>{j.company_name}</td>
+                        <td>{new Date(j.created_at).toLocaleDateString()}</td>
+                        <td><span className="badge badge-warning">Pendiente</span></td>
+                        <td>
+                          <div style={{ display: "flex", gap: "0.5rem" }}>
+                            <button className="btn btn-sm btn-success" onClick={() => handleUpdateJobStatus(j.id, 'open')} disabled={actionLoading === j.id}>
+                              Aprobar
+                            </button>
+                            <button className="btn btn-sm btn-danger" onClick={() => handleUpdateJobStatus(j.id, 'rejected')} disabled={actionLoading === j.id}>
+                              Rechazar
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {jobs.filter(j => j.status === 'pending').length === 0 && (
+                      <tr><td colSpan={5} className="empty-cell">No hay ofertas pendientes de revisión</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="admin-table-card glass">
+              <h3>✅ Ofertas Historicas / Activas</h3>
+              <div className="admin-table-wrapper">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Título</th>
+                      <th>Empresa</th>
+                      <th>Fecha</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {jobs.filter(j => j.status === 'open' || j.status === 'rejected').map(j => (
+                      <tr key={j.id}>
+                        <td><strong>{j.title}</strong></td>
+                        <td>{j.company_name}</td>
+                        <td>{new Date(j.created_at).toLocaleDateString()}</td>
+                        <td>
+                          {j.status === 'open' ? <span className="badge badge-success">Activa</span> : <span className="badge badge-danger">Rechazada</span>}
+                        </td>
+                        <td>
+                          <button className="btn btn-sm btn-outline" style={{ borderColor: "var(--text-secondary)", color: "var(--text-secondary)" }} onClick={() => handleUpdateJobStatus(j.id, j.status === 'open' ? 'rejected' : 'open')} disabled={actionLoading === j.id}>
+                            {j.status === 'open' ? 'Ocultar' : 'Reactivar'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {jobs.filter(j => j.status === 'open' || j.status === 'rejected').length === 0 && (
+                      <tr><td colSpan={5} className="empty-cell">No hay historial de ofertas registradas</td></tr>
                     )}
                   </tbody>
                 </table>

@@ -23,6 +23,7 @@ const AffiliateDashboard = React.lazy(() => import("./pages/AffiliateDashboard")
 const Leaderboard = React.lazy(() => import("./pages/Leaderboard"));
 const AdminPanel = React.lazy(() => import("./pages/AdminPanel"));
 const CourseEditor = React.lazy(() => import("./pages/CourseEditor"));
+const PostJob = React.lazy(() => import("./pages/PostJob"));
 const PaymentResult = React.lazy(() => import("./pages/PaymentResult"));
 const JobBoard = React.lazy(() => import("./pages/JobBoard"));
 
@@ -174,6 +175,16 @@ function App() {
             <AppLayout>
               <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
                 <JobBoard />
+              </React.Suspense>
+            </AppLayout>
+          }
+        />
+        <Route
+          path="/post-job"
+          element={
+            <AppLayout>
+              <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+                <PostJob />
               </React.Suspense>
             </AppLayout>
           }
