@@ -50,47 +50,91 @@ Deno.serve(async (req: Request) => {
     );
 
     // 2. Parse body
-    const { course_id, type } = await req.json();
-    if (!course_id || !type) {
-      return new Response(JSON.stringify({ error: "course_id y type son requeridos" }), {
+    const { course_id, application_id, type } = await req.json();
+    if (!type) {
+      return new Response(JSON.stringify({ error: "type es requerido" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // 3. Get course details
-    const { data: course, error: courseErr } = await supabase
-      .from("courses")
-      .select("id, title, level, price, currency")
-      .eq("id", course_id)
-      .single();
-
-    if (courseErr || !course) {
-      return new Response(JSON.stringify({ error: "Curso no encontrado" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // 4. Determine price
+    // 3 & 4. Determine price and entity
     let amount: number;
     let currency: string;
     let description: string;
+    let target_course_id: string | null = course_id || null;
 
-    if (type === "course") {
-      // Course enrollment payment — price comes from DB
-      amount = Number(course.price) || 49.99;
-      currency = course.currency || "USD";
-      description = `Inscripción: ${course.title}`;
-    } else if (PRICES[type]) {
-      amount = PRICES[type].amount;
-      currency = PRICES[type].currency;
-      description = `${PRICES[type].description} — ${course.title}`;
+    if (type === "escrow") {
+      if (!application_id) {
+        return new Response(JSON.stringify({ error: "application_id es requerido para escrow" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+      // Get Application details
+      const { data: appData, error: appErr } = await supabase
+        .from("job_applications")
+        .select("id, bid_amount, job_id, job_postings(title)")
+        .eq("id", application_id)
+        .single();
+        
+      if (appErr || !appData) {
+        return new Response(JSON.stringify({ error: "Propuesta no encontrada" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      // Calculate Fees
+      const bid_amount = Number(appData.bid_amount);
+      const employer_fee = bid_amount * 0.10; // 10% platform fee for employer
+      const talent_fee = bid_amount * 0.10;   // 10% platform fee for talent
+      const total_paid = bid_amount + employer_fee;
+      const talent_earnings = bid_amount - talent_fee;
+
+      // Update the application with the calculated fees prior to checkout
+      await supabase.from("job_applications").update({
+        employer_fee,
+        talent_fee,
+        total_paid,
+        talent_earnings
+      }).eq("id", application_id);
+
+      amount = total_paid;
+      currency = "USD";
+      description = `Escrow B2B: ${appData.job_postings.title} (Comisión incl.)`;
+      target_course_id = null; // No course tied
+      
     } else {
-      return new Response(JSON.stringify({ error: "Tipo de pago no válido" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (!course_id) {
+        return new Response(JSON.stringify({ error: "course_id es requerido para este tipo" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+      // Get course details
+      const { data: course, error: courseErr } = await supabase
+        .from("courses")
+        .select("id, title, price, currency")
+        .eq("id", course_id)
+        .single();
+
+      if (courseErr || !course) {
+        return new Response(JSON.stringify({ error: "Curso no encontrado" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      if (type === "course") {
+        amount = Number(course.price) || 49.99;
+        currency = course.currency || "USD";
+        description = `Inscripción: ${course.title}`;
+      } else if (PRICES[type]) {
+        amount = PRICES[type].amount;
+        currency = PRICES[type].currency;
+        description = `${PRICES[type].description} — ${course.title}`;
+      } else {
+        return new Response(JSON.stringify({ error: "Tipo de pago no válido" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
     }
 
     // 5. Get user profile for payer info
@@ -105,12 +149,15 @@ Deno.serve(async (req: Request) => {
       .from("payment_orders")
       .insert({
         user_id: user.id,
-        course_id,
+        course_id: target_course_id,
         type,
         amount,
         currency,
         status: "pending",
-        metadata: { course_title: course.title },
+        metadata: { 
+          description, 
+          application_id: type === 'escrow' ? application_id : null 
+        },
       })
       .select()
       .single();

@@ -77,9 +77,11 @@ export default function Navbar() {
         {session ? (
           <>
             <Link to="/dashboard" className="nav-item">🏠 {t("nav_dashboard", "Dashboard")}</Link>
+            <Link to="/my-profile" className="nav-item">👔 Mi Perfil</Link>
             {isAdmin && <Link to="/generate" className="nav-item">✨ {t("nav_generate", "Generar")}</Link>}
             <Link to="/catalog" className="nav-item">📚 {t("nav_catalog", "Catálogo")}</Link>
             <Link to="/jobs" className="nav-item" title="Bolsa de Trabajo">💼</Link>
+            <Link to="/manage-jobs" className="nav-item" title="Mis Ofertas Publicadas">📋 Mis Ofertas</Link>
             <Link to="/post-job" className="nav-item btn btn-outline" style={{ padding: "0.3rem 0.6rem", fontSize: "0.8rem", borderColor: "var(--accent-glow)", color: "var(--accent-glow)" }}>Publicar Empleo</Link>
             <Link to="/leaderboard" className="nav-item" title="Ranking">🏆</Link>
             <Link to="/analytics" className="nav-item" title="Estadísticas">📊</Link>

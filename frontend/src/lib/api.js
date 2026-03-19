@@ -139,6 +139,37 @@ export const api = {
     return data;
   },
 
+  updateUserProfile: async (updates) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from("profiles")
+      .update(updates)
+      .eq("id", user.id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  getPublicProfile: async (profileId) => {
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, full_name, headline, bio, skills, location, portfolio_url, hourly_rate, total_xp, badges")
+      .eq("id", profileId)
+      .single();
+    if (profileError) throw profileError;
+
+    // Get earned certificates (where completed is true and final score >= 70 theoretically, but we use completed for now)
+    const { data: certificates, error: certError } = await supabase
+      .from("course_progress")
+      .select("course_id, completed_at, score")
+      .eq("user_id", profileId)
+      .eq("completed", true);
+    if (certError) throw certError;
+
+    return { ...profile, certificates };
+  },
+
   getPublishedCourses: async () => {
     const { data, error } = await supabase
       .from("courses")
@@ -379,6 +410,89 @@ export const api = {
     URL.revokeObjectURL(url);
   },
 
+  // ========== JOBS & BIDDING ==========
+  createJobPosting: async (jobData) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from('job_postings')
+      .insert({
+         ...jobData,
+         employer_id: user?.id,
+         status: 'pending'
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+  
+  createJobApplication: async (jobId, coverLetter, bidAmount, estimatedDays) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Debes iniciar sesión para postularte");
+    
+    const { data, error } = await supabase
+      .from('job_applications')
+      .insert({
+        job_id: jobId,
+        user_id: user.id,
+        cover_letter: coverLetter,
+        bid_amount: bidAmount ? parseFloat(bidAmount) : null,
+        estimated_days: estimatedDays ? parseInt(estimatedDays) : null,
+        status: 'pending'
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      if (error.code === '23505') throw new Error('Ya te has postulado a esta oferta');
+      throw error;
+    }
+    return data;
+  },
+
+  getEmployerJobs: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from('job_postings')
+      .select('*')
+      .eq('employer_id', user.id)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
+  getJobApplicationsForEmployer: async (jobId) => {
+    const { data, error } = await supabase
+      .from('job_applications')
+      .select('*, profiles(full_name, headline, hourly_rate, total_xp, rating_avg, rating_count)')
+      .eq('job_id', jobId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
+  updateApplicationStatus: async (appId, status) => {
+    const { data, error } = await supabase
+      .from('job_applications')
+      .update({ status })
+      .eq('id', appId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  analyzeCandidateWithAI: async (applicationId) => {
+    const { data, error } = await supabase.functions.invoke('ai-matcher', {
+      body: { applicationId }
+    });
+    if (error) {
+       console.error("AI Matcher Error:", error);
+       throw new Error("No se pudo analizar al candidato. Intenta más tarde.");
+    }
+    return data;
+  },
+
   getDashboardData: async () => {
     const { data: { user } } = await supabase.auth.getUser();
     
@@ -516,7 +630,207 @@ export const api = {
     });
     if (error) throw error;
     return data;
+  },
+
+  acceptProposalEscrow: async (applicationId) => {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) throw new Error("No estás autenticado");
+
+    const res = await fetch(`${supabaseUrl}/functions/v1/create-payment`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ type: "escrow", application_id: applicationId })
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || "Error al generar link de pago Escrow");
+    }
+
+    const { init_point } = await res.json();
+    return init_point;
+  },
+
+  getWalletStats: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { escrow: 0, available: 0 };
+    
+    // Available
+    const { data: profile } = await supabase.from('profiles').select('wallet_balance').eq('id', user.id).single();
+    
+    // Escrow (in_progress apps)
+    const { data: apps } = await supabase
+      .from('job_applications')
+      .select('talent_earnings')
+      .eq('user_id', user.id)
+      .eq('status', 'in_progress');
+      
+    const escrow = apps?.reduce((sum, app) => sum + (Number(app.talent_earnings) || 0), 0) || 0;
+    
+    return {
+      available: Number(profile?.wallet_balance) || 0,
+      escrow: escrow
+    };
+  },
+
+  getMyApplications: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data, error } = await supabase
+      .from('job_applications')
+      .select('*, job_postings(*, employer_profiles:profiles!job_postings_employer_id_fkey(full_name))')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data;
+  },
+
+  // --- WORKSPACE (FASE 5) ---
+  getWorkspaceMessages: async (applicationId) => {
+    const { data, error } = await supabase
+      .from('workspace_messages')
+      .select('*, sender:profiles!workspace_messages_sender_id_fkey(full_name)')
+      .eq('application_id', applicationId)
+      .order('created_at', { ascending: true });
+    
+    if (error) throw error;
+    return data;
+  },
+
+  sendMessage: async (applicationId, content, isDelivery = false) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("No autenticado");
+
+    const { data, error } = await supabase
+      .from('workspace_messages')
+      .insert([
+        { application_id: applicationId, sender_id: user.id, content, is_delivery: isDelivery }
+      ])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  approveDelivery: async (applicationId) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/release-escrow`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ applicationId })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Error al liberar fondos");
+    }
+    return res.json();
+  },
+
+  // --- REVIEWS (FASE 6) ---
+  submitReview: async (applicationId, rating, comment) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("No autenticado");
+
+    // Requerimos saber quién es el Reviewee.
+    const { data: app } = await supabase
+      .from('job_applications')
+      .select('*, job_postings(*)')
+      .eq('id', applicationId)
+      .single();
+
+    if (!app) throw new Error("Postulación no encontrada");
+
+    const isEmployer = user.id === app.job_postings.employer_id;
+    const revieweeId = isEmployer ? app.user_id : app.job_postings.employer_id;
+
+    const { data, error } = await supabase
+      .from('job_reviews')
+      .insert([{
+        application_id: applicationId,
+        reviewer_id: user.id,
+        reviewee_id: revieweeId,
+        rating: parseInt(rating),
+        comment: comment.trim()
+      }]);
+
+    if (error) throw error;
+    return data;
+  },
+
+  getReviews: async (userId) => {
+    const { data, error } = await supabase
+      .from('job_reviews')
+      .select('*, reviewer:profiles!job_reviews_reviewer_id_fkey(full_name)')
+      .eq('reviewee_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data;
+  },
+
+  // --- DISPUTES (FASE 7) ---
+  openDispute: async (applicationId, reason) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("No autenticado");
+
+    const { data, error } = await supabase
+      .from('job_disputes')
+      .insert([{
+        application_id: applicationId,
+        created_by: user.id,
+        reason: reason.trim(),
+        status: 'pending'
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  getDisputes: async () => {
+    const { data, error } = await supabase
+      .from('job_disputes')
+      .select('*, application:job_applications(*, profiles(full_name))')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data;
+  },
+
+  resolveDispute: async (disputeId, resolutionNote, newStatus) => {
+    const { data, error } = await supabase
+      .from('job_disputes')
+      .update({ status: newStatus, resolution_note: resolutionNote })
+      .eq('id', disputeId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  updateApplicationStatus: async (applicationId, status) => {
+    const { data, error } = await supabase
+      .from('job_applications')
+      .update({ status })
+      .eq('id', applicationId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
   }
 };
-
-

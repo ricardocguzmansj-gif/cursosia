@@ -26,6 +26,11 @@ const CourseEditor = React.lazy(() => import("./pages/CourseEditor"));
 const PostJob = React.lazy(() => import("./pages/PostJob"));
 const PaymentResult = React.lazy(() => import("./pages/PaymentResult"));
 const JobBoard = React.lazy(() => import("./pages/JobBoard"));
+const MyProfile = React.lazy(() => import("./pages/MyProfile"));
+const PublicProfile = React.lazy(() => import("./pages/PublicProfile"));
+const ManageJobs = React.lazy(() => import("./pages/ManageJobs"));
+const JobApplications = React.lazy(() => import("./pages/JobApplications"));
+const Workspace = React.lazy(() => import("./pages/Workspace"));
 
 function ProtectedRoute({ session, children }) {
   if (!session) return <Navigate to="/login" replace />;
@@ -107,6 +112,18 @@ function App() {
           }
         />
         <Route
+          path="/my-profile"
+          element={
+            <ProtectedRoute session={session}>
+              <AppLayout>
+                <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+                  <MyProfile />
+                </React.Suspense>
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/generate"
           element={
             <AdminRoute session={session}>
@@ -160,6 +177,16 @@ function App() {
           }
         />
         <Route
+          path="/talento/:id"
+          element={
+            <AppLayout>
+              <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+                <PublicProfile />
+              </React.Suspense>
+            </AppLayout>
+          }
+        />
+        <Route
           path="/catalog"
           element={
             <AppLayout>
@@ -187,6 +214,42 @@ function App() {
                 <PostJob />
               </React.Suspense>
             </AppLayout>
+          }
+        />
+        <Route
+          path="/manage-jobs"
+          element={
+            <ProtectedRoute session={session}>
+              <AppLayout>
+                <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+                  <ManageJobs />
+                </React.Suspense>
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/jobs/:jobId/applications"
+          element={
+            <ProtectedRoute session={session}>
+              <AppLayout>
+                <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+                  <JobApplications />
+                </React.Suspense>
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/workspace/:applicationId"
+          element={
+            <ProtectedRoute session={session}>
+              <AppLayout>
+                <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+                  <Workspace />
+                </React.Suspense>
+              </AppLayout>
+            </ProtectedRoute>
           }
         />
         {/* Analytics & Affiliates (protected) */}

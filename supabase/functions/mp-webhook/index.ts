@@ -143,6 +143,30 @@ Deno.serve(async (req: Request) => {
           .eq("id", order.course_id);
 
         console.log("✅ AI Video enabled");
+      } else if (order.type === "escrow") {
+        const applicationId = order.metadata?.application_id;
+        if (applicationId) {
+          // Update application status to in_progress
+          const { data: updatedApp, error: appErr } = await supabase
+            .from("job_applications")
+            .update({ status: 'in_progress' })
+            .eq("id", applicationId)
+            .select("job_id")
+            .single();
+
+          if (appErr) {
+            console.error("❌ Escrow Application update error:", appErr.message);
+          } else if (updatedApp?.job_id) {
+            // Update job posting to in_progress to indicate it's active and funded
+            const { error: jobErr } = await supabase
+              .from("job_postings")
+              .update({ status: 'in_progress' })
+              .eq("id", updatedApp.job_id);
+
+            if (jobErr) console.error("❌ Escrow Job update error:", jobErr.message);
+            else console.log(`✅ Escrow Job ${updatedApp.job_id} is now in_progress`);
+          }
+        }
       }
 
       // 5. Send confirmation email via send-email function
@@ -157,10 +181,10 @@ Deno.serve(async (req: Request) => {
 
         const emailPayload = {
           to: userData?.user?.email,
-          template: order.type === "course" ? "enrollment_confirmed" : order.type === "certificate" ? "certificate_paid" : "payment_confirmed",
+          template: order.type === "course" ? "enrollment_confirmed" : order.type === "certificate" ? "certificate_paid" : order.type === "escrow" ? "escrow_funded" : "payment_confirmed",
           data: {
             name: profile?.full_name || "Estudiante",
-            course_title: order.metadata?.course_title || "Curso",
+            course_title: order.metadata?.description || order.metadata?.course_title || "Servicio B2B",
             amount: order.amount,
             currency: order.currency,
             payment_id: actualPaymentId,

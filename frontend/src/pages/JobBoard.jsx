@@ -12,6 +12,13 @@ export default function JobBoard() {
     loadJobs();
   }, []);
 
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [applicationData, setApplicationData] = useState({
+    coverLetter: '',
+    bidAmount: '',
+    estimatedDays: ''
+  });
+
   const loadJobs = async () => {
     setLoading(true);
     try {
@@ -31,29 +38,25 @@ export default function JobBoard() {
     }
   };
 
-  const handleApply = async (jobId) => {
+  const initApply = (job) => {
     if (!session) {
       toast.error("Debes iniciar sesión para postularte");
       return;
     }
+    setSelectedJob(job);
+    setApplicationData({ coverLetter: '', bidAmount: '', estimatedDays: '' });
+  };
+
+  const handleApply = async (e) => {
+    e.preventDefault();
+    if (!session) return;
     
     try {
-      const { error } = await supabase
-        .from('job_applications')
-        .insert({
-          job_id: jobId,
-          user_id: session.user.id,
-          status: 'pending'
-        });
-        
-      if (error) {
-        if (error.code === '23505') toast.error("Ya te has postulado a esta oferta");
-        else throw error;
-      } else {
-        toast.success("¡Postulación enviada con éxito!", { icon: "🚀" });
-      }
+      await api.createJobApplication(selectedJob.id, applicationData.coverLetter, applicationData.bidAmount, applicationData.estimatedDays);
+      toast.success("¡Postulación y Propuesta enviadas con éxito!", { icon: "🚀" });
+      setSelectedJob(null);
     } catch (err) {
-      toast.error("Error al enviar postulación");
+      toast.error(err.message || "Error al enviar postulación");
     }
   };
 
@@ -89,8 +92,8 @@ export default function JobBoard() {
                 <p style={{ margin: "0", fontSize: "0.95rem" }}>{job.description?.slice(0, 150)}...</p>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", alignItems: "flex-end" }}>
-                <button className="btn btn-primary" onClick={() => handleApply(job.id)}>
-                  Postularme
+                <button className="btn btn-primary" onClick={() => initApply(job)}>
+                  Hacer una Propuesta
                 </button>
                 <span style={{ fontSize: "0.75rem", opacity: 0.6 }}>
                   Publicado: {new Date(job.created_at).toLocaleDateString()}
@@ -98,6 +101,66 @@ export default function JobBoard() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {selectedJob && (
+        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div className="modal-content glass" style={{ padding: '2rem', borderRadius: '16px', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ fontSize: '1.5rem' }}>Postular a: {selectedJob.title}</h2>
+              <button 
+                onClick={() => setSelectedJob(null)} 
+                style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleApply} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div className="form-group">
+                <label>Carta de Presentación / Propuesta *</label>
+                <textarea 
+                  required
+                  rows="5"
+                  placeholder="Explícale al reclutador por qué eres la mejor opción para este trabajo..."
+                  value={applicationData.coverLetter}
+                  onChange={(e) => setApplicationData({...applicationData, coverLetter: e.target.value})}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label>Tu Presupuesto ($ USD)</label>
+                  <input 
+                    type="number"
+                    step="0.1"
+                    placeholder="Ej. 150.00"
+                    value={applicationData.bidAmount}
+                    onChange={(e) => setApplicationData({...applicationData, bidAmount: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Tiempo Estimado (Días)</label>
+                  <input 
+                    type="number"
+                    placeholder="Ej. 7"
+                    value={applicationData.estimatedDays}
+                    onChange={(e) => setApplicationData({...applicationData, estimatedDays: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => setSelectedJob(null)}>
+                  Cancelar
+                </button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                  🚀 Enviar Propuesta
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

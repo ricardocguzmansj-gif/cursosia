@@ -10,6 +10,7 @@ export default function AdminPanel() {
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
   const [jobs, setJobs] = useState([]);
+  const [disputes, setDisputes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -24,16 +25,18 @@ export default function AdminPanel() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [statsData, usersData, coursesData, jobsData] = await Promise.all([
+      const [statsData, usersData, coursesData, jobsData, disputesData] = await Promise.all([
         api.adminGetStats(),
         api.adminListUsers(),
         api.adminListCourses(),
-        api.getAllJobsAdmin()
+        api.getAllJobsAdmin(),
+        api.getDisputes()
       ]);
       setStats(statsData);
       setUsers(usersData);
       setCourses(coursesData);
       setJobs(jobsData);
+      setDisputes(disputesData || []);
     } catch (err) {
       console.error("Admin load error:", err);
       navigate("/dashboard");
@@ -131,6 +134,25 @@ export default function AdminPanel() {
     }
   };
 
+  const handleResolveDispute = async (disputeId, note, status, appId) => {
+    setActionLoading(disputeId);
+    try {
+      await api.resolveDispute(disputeId, note || "", status);
+      if (status === 'resolved') {
+        await api.approveDelivery(appId);
+        toast.success("Pago liberado al talento.");
+      } else {
+        await api.updateApplicationStatus(appId, 'rejected');
+        toast.success("Fianza bloqueada / Reembolso simulado.");
+      }
+      loadData();
+    } catch (err) {
+      toast.error(err.message || "Error al resolver la disputa");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const filteredUsers = users.filter(u =>
     (u.full_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
     (u.email || "").toLowerCase().includes(searchTerm.toLowerCase())
@@ -191,6 +213,12 @@ export default function AdminPanel() {
             onClick={() => setTab("jobs")}
           >
             💼 Empleos ({jobs.length})
+          </button>
+          <button
+            className={`admin-tab ${tab === "disputes" ? "active" : ""}`}
+            onClick={() => setTab("disputes")}
+          >
+            ⚖️ Disputas ({disputes.length})
           </button>
         </div>
 
@@ -625,6 +653,75 @@ export default function AdminPanel() {
                     ))}
                     {jobs.filter(j => j.status === 'open' || j.status === 'rejected').length === 0 && (
                       <tr><td colSpan={5} className="empty-cell">No hay historial de ofertas registradas</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== DISPUTES TAB ===== */}
+        {tab === "disputes" && (
+          <div className="admin-disputes" style={{ marginTop: '1rem' }}>
+            <div className="admin-table-card glass">
+              <h3 style={{ marginBottom: '1rem' }}>⚖️ Disputas y Reclamos Abiertos</h3>
+              <div className="admin-table-wrapper">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Motivo</th>
+                      <th>Involucrados</th>
+                      <th>Fecha</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {disputes.map(d => (
+                      <tr key={d.id}>
+                        <td>
+                          <strong>{d.reason}</strong>
+                          {d.resolution_note && (
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                              💡 Res: {d.resolution_note}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ fontSize: '0.9rem' }}>
+                          <div>👷‍♂️ {d.application?.profiles?.full_name || 'Talento'}</div>
+                        </td>
+                        <td>{new Date(d.created_at).toLocaleDateString()}</td>
+                        <td>
+                          <span className="badge" style={{ 
+                            background: d.status === 'pending' ? 'rgba(253, 203, 110, 0.2)' : d.status === 'resolved' ? 'rgba(0, 184, 148, 0.2)' : 'rgba(255, 107, 107, 0.2)',
+                            color: d.status === 'pending' ? 'var(--warning)' : d.status === 'resolved' ? 'var(--success)' : 'var(--danger)'
+                          }}>
+                            {d.status === 'pending' ? 'PENDIENTE' : d.status === 'resolved' ? 'RESUELTO' : 'RECHAZADO'}
+                          </span>
+                        </td>
+                        <td>
+                          {d.status === 'pending' && (
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button className="btn btn-sm btn-success" onClick={() => {
+                                const note = window.prompt("Nota de resolución (Opcional):");
+                                if (note !== null) handleResolveDispute(d.id, note, 'resolved', d.application_id);
+                              }}>
+                                💸 Liberar Fondos
+                              </button>
+                              <button className="btn btn-sm btn-danger" onClick={() => {
+                                const note = window.prompt("Nota de rechazo / reembolso (Opcional):");
+                                if (note !== null) handleResolveDispute(d.id, note, 'dismissed', d.application_id);
+                              }}>
+                                🛑 Reembolsar
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {disputes.length === 0 && (
+                      <tr><td colSpan={5} className="empty-cell">No hay disputas registradas</td></tr>
                     )}
                   </tbody>
                 </table>
