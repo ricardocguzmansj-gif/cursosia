@@ -5,6 +5,9 @@
   "build": {
     "command": "echo 'Pre-built'"
   },
+  "routes": [
+    { "pattern": "cursosia.digitalsaasfactory.com", "custom_domain": true }
+  ],
   "assets": {
     "directory": "frontend/dist",
     "not_found_handling": "single-page-application"
