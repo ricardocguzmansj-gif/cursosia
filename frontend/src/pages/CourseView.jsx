@@ -123,7 +123,7 @@ export default function CourseView() {
       return;
     }
     const currentLessons = unidades[currentUnit]?.lecciones || [];
-    if (currentLesson < currentLessons.length) {
+    if (currentLesson < currentLessons.length - 1) {
       handleNavigate(currentUnit, currentLesson + 1);
     } else if (currentUnit < unidades.length - 1) {
       handleNavigate(currentUnit + 1, 0);
