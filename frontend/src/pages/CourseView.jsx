@@ -331,6 +331,15 @@ export default function CourseView() {
 function CourseOverview({ curso, course, onStart, hasProgress, enrollment }) {
   return (
     <div className="course-overview">
+      {!enrollment && (
+        <div className="banner-auth glass" style={{ padding: "1.2rem", marginBottom: "1.5rem", borderRadius: "16px", background: "rgba(100, 149, 237, 0.15)", border: "1px solid rgba(100, 149, 237, 0.3)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <span style={{ fontSize: "1.5rem" }}>🔒</span>
+            <p style={{ margin: 0, color: "white", fontWeight: "600" }}>Debes Registrarte o Iniciar sesión para continuar</p>
+          </div>
+          <Link to="/login" className="btn btn-sm btn-accent">Ir a LogIn</Link>
+        </div>
+      )}
       {/* Course Header */}
       <div className="course-header-card glass">
         <h1>{curso.titulo}</h1>

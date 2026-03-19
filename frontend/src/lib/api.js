@@ -103,6 +103,7 @@ export const api = {
   // Progress (direct Supabase with RLS)
   saveProgress: async (course_id, unit_index, lesson_index, score) => {
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("No autorizado"); // Guard
     const { data, error } = await supabase
       .from("course_progress")
       .upsert({
@@ -133,6 +134,7 @@ export const api = {
 
   getLastPosition: async (courseId) => {
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null; // Guard
     const { data, error } = await supabase
       .rpc('get_last_position', { p_user_id: user.id, p_course_id: courseId });
     if (error) throw error;
@@ -208,6 +210,17 @@ export const api = {
         review_count: ratings.length
       };
     });
+  },
+
+  getMyCourses: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from("course_enrollments")
+      .select("course_id")
+      .eq("user_id", user.id);
+    if (error) throw error;
+    return data || [];
   },
 
   publishCourse: async (id, slug) => {
