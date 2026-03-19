@@ -243,6 +243,8 @@ export const api = {
 
   enrollInCourse: async (courseId, source = 'free') => {
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("No autorizado");
+
     const { data, error } = await supabase
       .from("course_enrollments")
       .upsert({
@@ -587,6 +589,13 @@ export const api = {
       .single();
     if (error) return null;
     return data?.role || 'alumno';
+  },
+
+  isAdmin: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+    return data?.role === "admin";
   },
 
   adminListUsers: async () => {
