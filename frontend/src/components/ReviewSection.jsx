@@ -24,7 +24,7 @@ export default function ReviewSection({ courseId }) {
     if (rating === 0) return;
     setSubmitting(true);
     try {
-      await api.submitReview(courseId, rating, comment);
+      await api.submitCourseReview(courseId, rating, comment);
       setSubmitted(true);
       await api.awardXP(15, 'review_submitted', courseId);
       loadReviews();

@@ -134,7 +134,7 @@ export default function Workspace() {
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.submitReview(applicationId, rating, comment);
+      await api.submitJobReview(applicationId, rating, comment);
       toast.success("¡Gracias por tu calificación!");
       setReviewed(true);
     } catch (err) {

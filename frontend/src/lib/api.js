@@ -44,16 +44,7 @@ export const api = {
     return result;
   },
 
-  updateCourseData: async (id, updates) => {
-    const { data, error } = await supabase
-      .from("courses")
-      .update(updates)
-      .eq("id", id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
-  },
+
 
   getCourses: async () => {
     const { data, error } = await supabase
@@ -361,7 +352,7 @@ export const api = {
   },
 
   // ========== REVIEWS ==========
-  submitReview: async (courseId, rating, comment) => {
+  submitCourseReview: async (courseId, rating, comment) => {
     const { data: { user } } = await supabase.auth.getUser();
     const { data, error } = await supabase
       .from("course_reviews")
@@ -669,7 +660,7 @@ export const api = {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session) throw new Error("No estás autenticado");
 
-    const res = await fetch(`${supabaseUrl}/functions/v1/create-payment`, {
+    const res = await fetch(EDGE_FUNCTION_URL + "/create-payment", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -772,7 +763,7 @@ export const api = {
   },
 
   // --- REVIEWS (FASE 6) ---
-  submitReview: async (applicationId, rating, comment) => {
+  submitJobReview: async (applicationId, rating, comment) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("No autenticado");
 
@@ -855,17 +846,7 @@ export const api = {
     return data;
   },
 
-  updateApplicationStatus: async (applicationId, status) => {
-    const { data, error } = await supabase
-      .from('job_applications')
-      .update({ status })
-      .eq('id', applicationId)
-      .select()
-      .single();
 
-    if (error) throw error;
-    return data;
-  },
 
   updateProfileVerification: async (companyName, whatsapp) => {
     const { data: { user } } = await supabase.auth.getUser();
