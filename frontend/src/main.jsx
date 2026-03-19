@@ -31,6 +31,7 @@ const PublicProfile = React.lazy(() => import("./pages/PublicProfile"));
 const ManageJobs = React.lazy(() => import("./pages/ManageJobs"));
 const JobApplications = React.lazy(() => import("./pages/JobApplications"));
 const Workspace = React.lazy(() => import("./pages/Workspace"));
+const CompanyAuth = React.lazy(() => import("./pages/CompanyAuth"));
 
 function ProtectedRoute({ session, children }) {
   if (!session) return <Navigate to="/login" replace />;
@@ -101,6 +102,8 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={session ? <Navigate to="/dashboard" replace /> : <Login />} />
         <Route path="/register" element={session ? <Navigate to="/dashboard" replace /> : <Register />} />
+        <Route path="/empresas/login" element={session ? <Navigate to="/manage-jobs" replace /> : <React.Suspense fallback={<div>...</div>}><CompanyAuth /></React.Suspense>} />
+        <Route path="/empresas/registro" element={session ? <Navigate to="/manage-jobs" replace /> : <React.Suspense fallback={<div>...</div>}><CompanyAuth /></React.Suspense>} />
         <Route
           path="/dashboard"
           element={

@@ -137,7 +137,10 @@ export default function JobApplications() {
             <div key={app.id} className="card glass" style={{ padding: "2rem" }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
                 <div>
-                  <h3 style={{ fontSize: '1.4rem', marginBottom: '0.25rem' }}>{app.profiles?.full_name || 'Usuario Anónimo'}</h3>
+                  <h3 style={{ fontSize: '1.4rem', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    {app.profiles?.full_name || 'Usuario Anónimo'}
+                    {app.profiles?.is_verified && <span title="Perfil Verificado" style={{ color: "var(--accent)", fontSize: "1.1rem" }}>✔️</span>}
+                  </h3>
                   <div style={{ color: 'var(--accent)', fontSize: '1rem', marginBottom: '0.5rem' }}>
                     {app.profiles?.headline}
                   </div>

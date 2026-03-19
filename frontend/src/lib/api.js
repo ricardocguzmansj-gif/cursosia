@@ -44,6 +44,17 @@ export const api = {
     return result;
   },
 
+  updateCourseData: async (id, updates) => {
+    const { data, error } = await supabase
+      .from("courses")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
   getCourses: async () => {
     const { data, error } = await supabase
       .from("courses")
@@ -827,6 +838,49 @@ export const api = {
       .from('job_applications')
       .update({ status })
       .eq('id', applicationId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  updateProfileVerification: async (companyName, whatsapp) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("No autenticado");
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ company_name: companyName, whatsapp })
+      .eq('id', user.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  verifyWhatsapp: async (code) => {
+    // Simulación de verificación con código (por ejemplo '1234')
+    if (code !== '1234' && code !== '0000') throw new Error("Código de verificación incorrecto.");
+
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ whatsapp_verified: true })
+      .eq('id', user.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  adminToggleVerification: async (userId, isVerified) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ is_verified: isVerified })
+      .eq('id', userId)
       .select()
       .single();
 

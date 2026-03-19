@@ -108,6 +108,19 @@ export default function AdminPanel() {
     }
   };
 
+  const handleToggleVerification = async (userId, currentVerified) => {
+    setActionLoading(userId);
+    try {
+      await api.adminToggleVerification(userId, !currentVerified);
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_verified: !currentVerified } : u));
+      toast.success(currentVerified ? "Usuario desverificado" : "Usuario verificado ✅");
+    } catch (err) {
+      toast.error(err.message || "Error al cambiar verificación");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleToggleCourseStatus = async (courseId, currentBlocked) => {
     setActionLoading(courseId);
     try {
@@ -478,6 +491,14 @@ export default function AdminPanel() {
                                 {actionLoading === u.id ? "..." : `🎓 Alumno`}
                               </button>
                             )}
+                            <button
+                              className={`btn btn-sm ${u.is_verified ? "btn-outline" : "btn-warning"}`}
+                              onClick={() => handleToggleVerification(u.id, u.is_verified)}
+                              disabled={actionLoading === u.id}
+                              style={{ borderColor: "var(--accent)", color: u.is_verified ? "var(--text)" : "#fff" }}
+                            >
+                              {u.is_verified ? "Desverificar" : "✔️ Verificar"}
+                            </button>
                             <button
                               className={`btn btn-sm ${u.is_blocked ? "btn-success" : "btn-danger"}`}
                               onClick={() => handleToggleUserStatus(u.id, u.is_blocked)}

@@ -13,6 +13,7 @@ export default function GenerateCourse() {
     formato: "mixto"
   });
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState({ stage: "", current: 0, total: 0 });
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
@@ -25,13 +26,74 @@ export default function GenerateCourse() {
     e.preventDefault();
     setError("");
     setLoading(true);
+    setProgress({ stage: "Diseñando Temario (Syllabus)... 📋", current: 0, total: 0 });
 
     try {
-      const course = await api.generateCourse({ 
+      // 1. Generar Syllabus
+      const courseResult = await api.generateCourse({ 
         ...form, 
+        mode: 'syllabus',
         language: i18n.language || "es" 
       });
-      navigate(`/course/${course.id}`);
+
+      const syllabus = courseResult.content;
+      if (!syllabus?.curso?.unidades) throw new Error("Temario inválido generado.");
+
+      const totalLessons = syllabus.curso.unidades.reduce((acc, u) => acc + (u.lecciones?.length || 0), 0);
+      let loaded = 0;
+      setProgress({ stage: "Inicializando expansión de clases... 🏗️", current: 0, total: totalLessons });
+
+      // 2. Bucle de Expansión
+      const expandedUnits = [];
+      for (let uIdx = 0; uIdx < syllabus.curso.unidades.length; uIdx++) {
+        const unit = syllabus.curso.unidades[uIdx];
+        const expandedLecciones = [];
+
+        for (let lIdx = 0; lIdx < (unit.lecciones?.length || 0); lIdx++) {
+          loaded++;
+          setProgress({ 
+            stage: `Unidad ${uIdx + 1}: Expandiendo "${unit.lecciones[lIdx].titulo}"... 🧠`, 
+            current: loaded, 
+            total: totalLessons 
+          });
+
+          // Invocar expansión para esta lección
+          const lessonDetails = await api.generateCourse({
+            ...form,
+            mode: 'expand-lesson',
+            current_syllabus: syllabus,
+            unit_index: uIdx,
+            lesson_index: lIdx,
+            language: i18n.language || "es"
+          });
+
+          expandedLecciones.push({
+            ...unit.lecciones[lIdx],
+            ...lessonDetails // idea_clave, explicacion, video_url, ejemplo_aplicado, actividad_practica, pregunta_test
+          });
+        }
+
+        expandedUnits.push({
+          ...unit,
+          lecciones: expandedLecciones
+        });
+      }
+
+      // 3. Compilar Contenido Final
+      const finalContent = {
+        ...syllabus,
+        curso: {
+          ...syllabus.curso,
+          unidades: expandedUnits
+        }
+      };
+
+      setProgress({ stage: "Finalizando y Guardando en base de datos... 💾", current: totalLessons, total: totalLessons });
+
+      // 4. Actualizar la fila en Supabase
+      await api.updateCourseData(courseResult.id, { content: finalContent });
+
+      navigate(`/course/${courseResult.id}`);
     } catch (err) {
       setError(err.message || t('gen_error', 'Error al generar el curso'));
       setLoading(false);
@@ -39,13 +101,24 @@ export default function GenerateCourse() {
   };
 
   if (loading) {
+    const percentage = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
+
     return (
       <div className="loading-overlay">
         <div className="loading-spinner"></div>
-        <h2>{t('gen_loading')}</h2>
-        <p className="loading-sub">{t('gen_loading_sub')}</p>
+        <h2>{percentage > 0 ? `🚀 Generando Contenido (${percentage}%)` : "📋 Diseñando Temario..."}</h2>
+        <p className="loading-sub" style={{ color: 'var(--accent)', fontWeight: 'bold', margin: '1rem 0' }}>
+          {progress.stage}
+        </p>
+        {progress.total > 0 && (
+          <div style={{ width: '80%', maxWidth: '400px', background: 'rgba(255,255,255,0.1)', height: '8px', borderRadius: '4px', overflow: 'hidden', marginBottom: '1rem' }}>
+            <div style={{ width: `${percentage}%`, background: 'var(--accent)', height: '100%', transition: 'width 0.4s ease' }}></div>
+          </div>
+        )}
         <p className="loading-sub" style={{ opacity: 0.6, fontSize: "0.85rem" }}>
-          {t('gen_loading_time', 'Esto puede tardar entre 20 y 60 segundos')}
+          {percentage > 0 
+            ? `Clase ${progress.current} de ${progress.total}. Esto garantiza el máximo rigor académico y práctico.` 
+            : t('gen_loading_time', 'Esto puede tardar entre 20 y 60 segundos')}
         </p>
       </div>
     );

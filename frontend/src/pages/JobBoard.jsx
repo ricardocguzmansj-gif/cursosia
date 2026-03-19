@@ -24,7 +24,7 @@ export default function JobBoard() {
     try {
       const { data, error } = await supabase
         .from('job_postings')
-        .select('*')
+        .select('*, employer:profiles!employer_id(is_verified)')
         .eq('status', 'open')
         .order('created_at', { ascending: false });
 
@@ -85,7 +85,10 @@ export default function JobBoard() {
               <div style={{ flex: 1, minWidth: "300px" }}>
                 <h3 style={{ margin: "0 0 0.5rem 0", color: "var(--primary-light)" }}>{job.title}</h3>
                 <div style={{ display: "flex", gap: "1rem", fontSize: "0.9rem", opacity: 0.8, marginBottom: "0.5rem" }}>
-                  <span>🏢 {job.company_name}</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                    🏢 {job.company_name}
+                    {job.employer?.is_verified && <span title="Empresa Verificada" style={{ color: "var(--accent)", fontSize: "0.9rem" }}>✔️</span>}
+                  </span>
                   <span>📍 {job.location_type}</span>
                   <span>💰 {job.salary_range || "Salario a convenir"}</span>
                 </div>

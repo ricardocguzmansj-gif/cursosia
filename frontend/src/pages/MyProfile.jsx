@@ -15,7 +15,9 @@ export default function MyProfile() {
     skills: '', // we will store as comma separated text in state
     location: '',
     portfolio_url: '',
-    hourly_rate: ''
+    hourly_rate: '',
+    company_name: '',
+    whatsapp: ''
   });
   const [wallet, setWallet] = useState({ available: 0, escrow: 0 });
   const [myApps, setMyApps] = useState([]);
@@ -54,7 +56,9 @@ export default function MyProfile() {
         skills: data.skills ? data.skills.join(', ') : '',
         location: data.location || '',
         portfolio_url: data.portfolio_url || '',
-        hourly_rate: data.hourly_rate || ''
+        hourly_rate: data.hourly_rate || '',
+        company_name: data.company_name || '',
+        whatsapp: data.whatsapp || ''
       });
     } catch (error) {
       toast.error("Error cargando perfil");
@@ -77,7 +81,9 @@ export default function MyProfile() {
         skills: formData.skills.split(',').map(s => s.trim()).filter(s => s),
         location: formData.location,
         portfolio_url: formData.portfolio_url,
-        hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : null
+        hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
+        company_name: formData.company_name,
+        whatsapp: formData.whatsapp
       };
       await api.updateUserProfile(updates);
       toast.success("Perfil actualizado con éxito");
@@ -100,11 +106,18 @@ export default function MyProfile() {
             Completa tu información para que las empresas puedan encontrarte.
           </p>
         </div>
-        {profile?.id && (
-          <a href={`/talento/${profile.id}`} target="_blank" rel="noreferrer" className="btn btn-primary">
-            👁️ Ver mi Perfil Público
-          </a>
-        )}
+        <div>
+          {profile?.is_verified && (
+            <span className="badge" style={{ background: 'rgba(0,184,148,0.2)', color: 'var(--success)', marginRight: '1rem', padding: '0.5rem 1rem' }}>
+              ✔️ Perfil Verificado
+            </span>
+          )}
+          {profile?.id && (
+            <a href={`/talento/${profile.id}`} target="_blank" rel="noreferrer" className="btn btn-primary">
+              👁️ Ver mi Perfil Público
+            </a>
+          )}
+        </div>
       </div>
 
       <div className="generate-card glass">
@@ -174,6 +187,53 @@ export default function MyProfile() {
                 onChange={handleChange} 
                 placeholder="Ej. 25.00" 
               />
+            </div>
+          </div>
+
+          <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius)', border: '1px solid var(--border-light)', marginBottom: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--primary-light)' }}>🏢 Datos de Verificación (Empresas / Reclutadores)</h3>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Nombre de la Empresa</label>
+                <input 
+                  name="company_name" 
+                  value={formData.company_name} 
+                  onChange={handleChange} 
+                  placeholder="Ej. Acme Inc." 
+                />
+              </div>
+              <div className="form-group">
+                <label>WhatsApp de Contacto</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input 
+                    name="whatsapp" 
+                    value={formData.whatsapp} 
+                    onChange={handleChange} 
+                    placeholder="Ej. +1234567890" 
+                    style={{ flex: 1 }}
+                  />
+                  {profile?.whatsapp_verified ? (
+                    <span style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.9rem' }}>
+                      ✔️ Verificado
+                    </span>
+                  ) : formData.whatsapp && (
+                    <button type="button" className="btn btn-outline btn-sm" onClick={async () => {
+                      const code = window.prompt("Ingresa el código enviado a tu WhatsApp (Simulación: 1234):");
+                      if (code) {
+                        try {
+                          await api.verifyWhatsapp(code);
+                          toast.success("WhatsApp verificado");
+                          loadProfile();
+                        } catch (err) {
+                          toast.error(err.message);
+                        }
+                      }
+                    }}>
+                      Verificar
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 

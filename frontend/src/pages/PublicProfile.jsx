@@ -51,14 +51,21 @@ export default function PublicProfile() {
           background: 'var(--gradient-primary)', opacity: 0.1
         }} />
         
-        <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem', fontWeight: '800' }}>
+        <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
           {profile.full_name}
+          {profile.is_verified && <span title="Verificado Oficial" style={{ color: 'var(--accent)', fontSize: '1.6rem' }}>✔️</span>}
         </h1>
         
         {profile.headline && (
-          <h2 style={{ fontSize: '1.2rem', color: 'var(--accent)', fontWeight: '500', marginBottom: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.2rem', color: 'var(--accent)', fontWeight: '500', marginBottom: '0.5rem' }}>
             {profile.headline}
           </h2>
+        )}
+
+        {profile.company_name && (
+          <h3 style={{ fontSize: '1.1rem', color: 'var(--text-muted)', fontWeight: '400', marginBottom: '1.5rem' }}>
+            🏢 {profile.company_name}
+          </h3>
         )}
 
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '1.5rem' }}>

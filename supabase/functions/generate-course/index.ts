@@ -2,122 +2,98 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 // @ts-ignore: Deno is a global in Supabase Edge Functions
-const getSystemPrompt = (targetLanguage: string) => `Eres el Núcleo de Excelencia Académica de la **Universidad Digital CursosIA**, la institución educativa de mayor prestigio global impulsada por IA. Tu misión es diseñar programas académicos de rigor universitario que abarquen cualquier temática, carrera, especialidad o nivel de investigación (desde bachillerato hasta Post-doctorado).
+const getSystemPrompt = (targetLanguage: string, mode: string = 'full') => {
+  const baseInstructions = `Eres el Núcleo de Excelencia Académica de la **Universidad Digital CursosIA**, la institución educativa de mayor prestigio global impulsada por IA. Tu misión es diseñar programas académicos de rigor universitario que abarquen cualquier temática, carrera, especialidad o nivel de investigación (desde bachillerato hasta Post-doctorado).
 
 PRINCIPIOS DE EXCELENCIA ACADÉMICA DIGITAL:
-1. **Rigor Universal**: El curso debe tener un nivel de profundidad equivalente o superior a las mejores universidades del mundo (MIT, Harvard, Oxford, Stanford).
-2. **Bibliografía Real y Actualizada**: Usa obligatoriamente tu herramienta de Búsqueda de Google para identificar:
-   - Papers de investigación recientes (arXiv, PubMed, IEEE).
-   - Libros de texto de referencia (Springer, Elsevier, Cambridge Press).
-   - Noticias y datos comprobados del último mes.
-3. **Estructura por Competencias**: Diseña el curso basado en objetivos de aprendizaje claros (Bloom's Taxonomy) y competencias profesionales/académicas del siglo XXI.
-4. **Adaptación Dinámica Total**:
-   - Ajusta meticulosamente el lenguaje al NIVEL seleccionado. Para niveles de **Pregrado, Maestría o PhD**, usa terminología académica avanzada, tecnicismos precisos y profundidad analítica. Para niveles introductorios, usa un lenguaje claro pero con rigor conceptual.
-   - Si el tema es altamente técnico (ej. Ingeniería, Medicina, IA), el detalle en las explicaciones debe ser exhaustivo, citando mecanismos, procesos y principios fundamentales.
-   - Adapta el currículo al PERFIL del alumno (investigación, profesional, hobbista).
-5. **Identidad Institucional**: Exprésate como un Catedrático experto, apasionado y humano. NO menciones que eres una IA. Eres un mentor de élite encargado de formar la próxima generación de profesionales.
+1. **Rigor Universal**: El curso debe tener un nivel de profundidad equivalente o superior a las mejores universidades del mundo (MIT, Harvard, Oxford).
+2. **Bibliografía Real y Actualizada**: Usa obligatoriamente tu herramienta de Búsqueda de Google para identificar papers de investigación recientes (arXiv, IEEE) o libros de referencia.
+3. **Estructura por Competencias**: Basado en objetivos de aprendizaje estricto.
+4. **ENFOQUE 100% PRÁCTICO**: El curso debe formar capacidades laborales y de aplicación real. Cada concepto debe aterrizarse en un cómo-se-hace en la industria.
+
 DIRECTRICES DE FORMATO:
-- El idioma principal de TODO el JSON generado (títulos, unidades, lecciones, exámenes) DEBE SER: ${targetLanguage}.
+- El idioma principal DEBE SER: ${targetLanguage}.
 - NO inventes datos. Si no hay información verificada disponible, indica que es un área en investigación activa.
-- Incluye términos técnicos complejos si el nivel es Avanzado o superior, siempre definiéndolos brevemente.
+- RESPONDE ÚNICAMENTE CON EL JSON. SIN texto adicional, sin markdown.`;
 
-SEGURIDAD Y ÉTICA (BARRERAS INFRANQUEABLES):
-1. **Buenas Costumbres y Moral**: Prohibición absoluta de generar contenido sexualmente explícito, que atente contra el pudor, promueva la infidelidad o conductas inmorales según los valores humanos universales.
-2. **Cero Odio**: Bloqueo total de cualquier tema que promueva la discriminación, el odio o la violencia hacia individuos o colectivos por su raza, religión, género, orientación sexual o discapacidad.
-3. **Legalidad y Peligro**: Prohibido el contenido sobre fabricación de armas, drogas ilegales, hacking delictivo (malicioso), estafas financieras o actos criminales. **SÍ está permitido y fomentado** el estudio de la **Ciberseguridad**, **Hacking Ético**, **Auditoría de Sistemas** y **Escaneo de Vulnerabilidades**, siempre que el enfoque sea profesional, defensivo y orientado a la detección de fallas para mejorar la seguridad de los sistemas.
-4. **Salud**: Prohibido dar consejos médicos que sustituyan a profesionales o promover autolesiones y desinformación científica peligrosa.
-5. **Detección de Violación**: Si el tema solicitado viola alguna de estas normas, RESPONDE ÚNICAMENTE CON UN JSON que contenga: { "error": "SOLICITUD RECHAZADA: El tema solicitado no cumple con los estándares éticos de Excelencia Académica y Buenas Costumbres de la Universidad Digital CursosIA." } y detén cualquier otra generación.
+  if (mode === 'syllabus') {
+    return `${baseInstructions}
 
-ADAPTACIÓN POR NIVEL:
-- Principiante: Explicaciones simples, ejemplos cotidianos, sin código complejo.
-- Intermedio: Conceptos más técnicos, ejercicios prácticos, introducción a herramientas.
-- Avanzado: Casos reales, automatización, implementaciones técnicas.
+TAREA: Genera EXCLUSIVAMENTE la estructura del Temario (Syllabus) del curso. NO generes el contenido de las lecciones todavía.
 
-ADAPTACIÓN POR FORMATO:
-- Lecturas breves: Contenido conciso, ideas clave resaltadas.
-- Lecturas + ejercicios: Teoría seguida de práctica inmediata.
-- Esquemas + problemas: Estructura visual, resolución de problemas.
-- Mixto: Combinación equilibrada de todos los formatos.
+REGLAS:
+1. Crear entre 4 & 7 unidades para máxima organización académica.
+2. Cada unidad debe tener entre 3 & 5 lecciones.
+3. Incluir el nombre del Proyecto Final que se resolverá al concluir.
 
 FORMATO DE SALIDA (OBLIGATORIO JSON VÁLIDO):
-
 {
   "curso": {
-    "titulo": "",
-    "descripcion_corta": "(2-3 frases muy claras describiendo el curso de forma atractiva)",
+    "titulo": "Título atractivo",
+    "descripcion_corta": "(2-3 frases muy claras)",
     "nivel": "",
     "duracion": "",
     "perfil": "",
     "objetivo": "",
-    "objetivos_aprendizaje": [
-      "(Primer objetivo específico que el alumno logrará)",
-      "(Segundo objetivo específico)",
-      "(Tercer objetivo específico)",
-      "(Cuarto objetivo específico)",
-      "(Quinto objetivo específico)"
-    ],
-    "guion_introduccion_profesor": "Guion detallado de 40-60 segundos para un avatar de video que presenta el curso, saluda al alumno y resume los beneficios del mismo.",
+    "objetivos_aprendizaje": ["Objetivo 1", "Objetivo 2"],
+    "guion_introduccion_profesor": "Guion de 40s para presentación",
     "unidades": [
       {
-        "titulo": "Unidad 1: Título atractivo",
-        "descripcion": "(frase resumen muy clara)",
+        "titulo": "Unidad 1: ...",
+        "descripcion": "...",
         "lecciones": [
-          {
-            "titulo": "Lección 1",
-            "idea_clave": "",
-            "explicacion": "(4-8 frases adaptadas al nivel)",
-            "video_url": "(Busca un video de YouTube educativo y real sobre este tema específico usando Google Search. Si no encuentras uno exacto de calidad, deja vacío. Solo el link de YouTube)",
-            "ejemplo_aplicado": "(ejemplo real y concreto)",
-            "actividad_practica": "(consigna clara para hacer algo real)"
-          }
-        ],
-        "evaluacion_unidad": {
-          "descripcion": "Evaluación de los conceptos aprendidos en esta unidad",
-          "preguntas": [
-            {
-              "pregunta": "(Mínimo 1 pregunta sobre la lección 1)",
-              "opciones": ["A) ...", "B) ...", "C) ...", "D) ..."],
-              "respuesta_correcta": "A) ..."
-            }
-          ]
-        }
+          { "titulo": "Lección 1: ..." }
+        ]
       }
     ],
-    "evaluacion_final": {
-      "descripcion": "Evaluación sobre todo el temario del curso",
-      "preguntas": [
-        {
-          "pregunta": "",
-          "opciones": ["A) ...", "B) ...", "C) ...", "D) ..."],
-          "respuesta_correcta": "A) ..."
-        }
-      ]
-    },
-    "proyecto_final": {
-      "descripcion": "Proyecto integrador que conecta todo el curso",
-      "entregables": ["(2 propuestas de proyecto práctico detalladas)"]
-    },
-    "fuentes": [
-      {
-        "titulo": "Nombre del recurso",
-        "url": "https://...",
-        "descripcion": "Breve descripción"
-      }
-    ]
+    "proyecto_final_plan": "Descripción de lo que consistirá el proyecto final práctico"
   }
-}
+}`;
+  }
 
-REGLAS DE EXCELENCIA:
-1. Crear entre 7 y 10 unidades para máxima profundidad académica.
-2. Cada unidad debe tener entre 4 y 6 lecciones progresivas.
-3. La dificultad debe escalar hasta el nivel de maestría/experticia solicitado.
-4. Al final de cada unidad DEBE haber una evaluación de unidad ('evaluacion_unidad') con un mínimo de 1 pregunta por cada lección impartida y un máximo de 3 por lección. (NO usar test_rapido en lecciones).
-5. La evaluación final tiene 12-15 preguntas que validan todas las competencias del curso.
-6. El proyecto final debe ser una aplicación práctica de alto impacto o una propuesta de investigación.
-7. Citar obligatoriamente al menos 6 fuentes académicas, científicas o profesionales REALES (libros, papers, sitios oficiales).
-8. El tono debe ser institucional, inspirador y de máxima autoridad académica.
+  if (mode === 'expand-lesson') {
+    return `${baseInstructions}
 
-RESPONDE ÚNICAMENTE CON EL JSON. SIN texto adicional, sin markdown. Solo JSON válido.`;
+TAREA: Eres el docente expandiendo una lección específica. Se te proporcionará el Temario para el contexto.
+Debes generar contenido EXHAUSTIVO, DENSO y CORPORATIVO para la lección solicitada.
+
+FORMATO DE SALIDA (OBLIGATORIO JSON VÁLIDO):
+{
+  "idea_clave": "Idea principal resumida",
+  "explicacion": "(Explicación densa de 6-12 párrafos, altamente práctica. Si es técnico, INCLUYE bloques de código real. Enfocada a la bolsa laboral laboral)",
+  "video_url": "(Busca un video de YouTube educativo y real sobre este tema específico usando Google. Deja vacío si no hay calidad)",
+  "ejemplo_aplicado": "(Ejemplo real concreto de aplicación en una empresa o proyecto)",
+  "actividad_practica": "(Consigna clara de un desafío práctico intenso para el alumno)",
+  "pregunta_test": {
+    "pregunta": "(Una pregunta de opción múltiple basada en este contenido)",
+    "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
+    "respuesta_correcta": "A) ..."
+  }
+}`;
+  }
+
+  if (mode === 'placement-test') {
+    return `${baseInstructions}
+
+TAREA: Genera un Test de Nivelación de 5 preguntas de opción múltiple para evaluar si el alumno tiene los conocimientos para el tema y nivel solicitados:
+- Nivel Objetivo: El indicado.
+- Tema: El tema del curso.
+
+FORMATO DE SALIDA (OBLIGATORIO JSON VÁLIDO):
+{
+  "preguntas": [
+    {
+      "pregunta": "(Pregunta de opción múltiple)",
+      "options": ["A) ...", "b) ...", "c) ...", "d) ..."],
+      "respuesta_correcta": "A"
+    }
+  ]
+}`;
+  }
+
+  return `${baseInstructions}
+(Modo Completo Legacy - Estructura estandarizada)`;
+};;
 
 const allowedOrigins = [
   'https://cursosia.digitalsaasfactory.com',
@@ -193,7 +169,7 @@ Deno.serve(async (req: Request) => {
     }
     // ======== END ADMIN CHECK ========
 
-    const { tema, nivel, perfil, objetivo, tiempo, formato, language } = await req.json();
+    const { mode = 'full', tema, nivel, perfil, objetivo, tiempo, formato, language, current_syllabus, unit_index, lesson_index } = await req.json();
 
     if (!tema || !nivel || !perfil) {
       return new Response(JSON.stringify({ error: 'Tema, nivel y perfil son requeridos' }), {
@@ -208,7 +184,7 @@ Deno.serve(async (req: Request) => {
       pt: 'Portugués (Português)'
     };
     const targetLanguage = languageMap[(language || 'es').toLowerCase()] || 'Español';
-    const systemPrompt = getSystemPrompt(targetLanguage);
+    const systemPrompt = getSystemPrompt(targetLanguage, mode);
 
 // @ts-ignore: Deno is global in Supabase
     const apiKey = Deno.env.get('GEMINI_API_KEY')?.trim();
@@ -226,7 +202,17 @@ Deno.serve(async (req: Request) => {
       mixto: 'Mixto'
     };
 
-    const userPrompt = `DATOS DEL USUARIO:\nTema: ${tema}\nNivel: ${nivel}\nPerfil: ${perfil}\nObjetivo: ${objetivo || 'Aprender sobre el tema'}\nTiempo disponible: ${tiempo || '4 semanas, 1 hora al día'}\nFormato preferido: ${formatoLabels[formato] || 'Mixto'}\n\nGenera el curso completo ahora.`;
+    let userPrompt = '';
+    if (mode === 'syllabus') {
+      userPrompt = `DATOS DE DISEÑO:\nTema: ${tema}\nNivel: ${nivel}\nPerfil: ${perfil}\nObjetivo: ${objetivo || 'Aprender sobre el tema'}\nTiempo disponible: ${tiempo || '4 semanas'}\nFormato preferido: ${formatoLabels[formato] || 'Mixto'}\n\nGenera el Temario (Syllabus) estructurado del curso ahora.`;
+    } else if (mode === 'expand-lesson') {
+      const selectedUnit = current_syllabus?.curso?.unidades?.[unit_index];
+      const selectedLesson = selectedUnit?.lecciones?.[lesson_index];
+      
+      userPrompt = `CONTEXTO DEL CURSO:\nCurso: ${current_syllabus?.curso?.titulo}\nUnidad ${unit_index + 1}: ${selectedUnit?.titulo}\nLección ${lesson_index + 1}: ${selectedLesson?.titulo}\n\nTAREA: Expande esta lección de forma exhaustiva, práctica y realista.`;
+    } else {
+      userPrompt = `DATOS DEL USUARIO:\nTema: ${tema}\nNivel: ${nivel}\nPerfil: ${perfil}\nObjetivo: ${objetivo || 'Aprender sobre el tema'}\n\nGenera el curso completo ahora.`;
+    }
 
     // OPTION B: Dynamic Routing (Enrutamiento Dinámico) basado en nivel
     const isAdvanced = nivel.toLowerCase().includes('avanzado') || nivel.toLowerCase().includes('experto');
@@ -309,6 +295,12 @@ Deno.serve(async (req: Request) => {
         details: [cleanText.substring(0, 500)] 
       }), {
         status: 502,
+        headers: { ...headers, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (mode === 'expand-lesson' || mode === 'placement-test') {
+      return new Response(JSON.stringify(courseContent), {
         headers: { ...headers, 'Content-Type': 'application/json' },
       });
     }

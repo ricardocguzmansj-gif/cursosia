@@ -21,8 +21,27 @@ export default function Catalog() {
   const [filter, setFilter] = useState({ level: "", search: "" });
   const [expandedId, setExpandedId] = useState(null);
   const [myEnrollments, setMyEnrollments] = useState([]);
+  const [testModal, setTestModal] = useState({ open: false, course: null, questions: [], currentIndex: 0, score: 0, loading: false });
   const navigate = useNavigate();
   const { t } = useTranslation();
+
+  const fetchPlacementTest = async (course) => {
+    setTestModal(prev => ({ ...prev, loading: true }));
+    try {
+      const data = await api.generateCourse({
+        mode: 'placement-test',
+        tema: course.topic,
+        nivel: course.level,
+        perfil: 'estudiante',
+        language: 'es'
+      });
+      if (!data.preguntas) throw new Error("No se generaron preguntas");
+      setTestModal(prev => ({ ...prev, questions: data.preguntas, loading: false }));
+    } catch (err) {
+      toast.error("Error al generar el test de nivelación.");
+      setTestModal({ open: false });
+    }
+  };
 
   useEffect(() => { loadCourses(); }, []);
 
@@ -68,33 +87,71 @@ export default function Catalog() {
 
   const handleEnroll = async (e, course) => {
     e.stopPropagation();
-    setEnrollLoading(course.id);
+    const isFree = course.level?.toLowerCase() === "principiante" || course.level?.toLowerCase() === "beginner";
+    
+    // 1. Verificar Prerrequisito
+    if (course.prerequisite_id && !myEnrollments.includes(course.prerequisite_id)) {
+      toast.error("⚠️ FALTA PRERREQUISITO: Debes aprobar el nivel previo antes de inscribirte.", { duration: 5000 });
+      return;
+    }
+
     try {
-      if (course.level === "Principiante" || course.level === "Beginner") {
+      if (isFree) {
+        setEnrollLoading(course.id);
         const canFree = await api.canEnrollFree();
         if (!canFree) {
-          toast.error("Límite alcanzado: El acceso gratuito al nivel Principiante es 1 curso por mes.\n\nPrueba con otro nivel o espera al próximo mes.", { duration: 5000 });
+          toast.error("Límite alcanzado: El acceso gratuito al nivel Principiante es 1 curso por mes.", { duration: 5000 });
+          setEnrollLoading(null);
           return;
         }
         await api.enrollInCourse(course.id, 'free');
         toast.success("Inscripción exitosa");
         navigate(`/course/${course.id}`);
       } else {
-        // Real MercadoPago payment
-        const payment = await api.createPayment(course.id, 'course');
-        toast.success("Cargando MercadoPago...");
-        // Redirect to MercadoPago checkout
-        window.location.href = payment.init_point;
+        // 2. Interceptar con Placement Test para Niveles Superiores
+        setTestModal({ open: true, course: course, questions: [], currentIndex: 0, score: 0 });
+        fetchPlacementTest(course);
       }
     } catch (err) {
       if (err.message?.includes("No autorizado")) {
         toast.error("Debes iniciar sesión para inscribirte.");
         navigate("/login");
       } else {
-        toast.error(err.message || "Error al procesar el pago.");
+        toast.error(err.message || "Error al procesar la solicitud.");
       }
     } finally {
       setEnrollLoading(null);
+    }
+  };
+
+  const handleTestAnswer = (correct) => {
+    setTestModal(prev => {
+      const isCorrect = correct;
+      const newScore = isCorrect ? prev.score + 1 : prev.score;
+      const nextIndex = prev.currentIndex + 1;
+
+      if (nextIndex >= prev.questions.length) {
+        // Fin del cuestionario
+        const passed = newScore >= 4; // 80% o más
+        if (passed) {
+          toast.success(`🎉 ¡Felicidades! Aprobaste con ${newScore}/5. Cargando Pago...`);
+          // Redirigir a pago
+          triggerPayment(prev.course);
+        } else {
+          toast.error(`❌ Sacaste ${newScore}/5. Te sugerimos repasar el nivel anterior. Acceso bloqueado.`);
+        }
+        return { ...prev, open: false };
+      }
+      return { ...prev, currentIndex: nextIndex, score: newScore };
+    });
+  };
+
+  const triggerPayment = async (course) => {
+    try {
+      const payment = await api.createPayment(course.id, 'course');
+      window.location.href = payment.init_point;
+    } catch (err) {
+      toast.error("Error cargando MercadoPago");
     }
   };
 
@@ -172,11 +229,20 @@ export default function Catalog() {
                   const isFree = course.level?.toLowerCase() === "principiante";
                   const previewUnits = isExpanded ? unidades : unidades.slice(0, 3);
 
+                  const levelClass = course.level?.toLowerCase() || "principiante";
+                  const glowStyles = {
+                    principiante: { border: "1px solid rgba(0, 184, 148, 0.3)", boxShadow: "0 4px 15px rgba(0, 184, 148, 0.05)" },
+                    intermedio: { border: "1px solid rgba(241, 196, 15, 0.3)", boxShadow: "0 4px 15px rgba(241, 196, 15, 0.05)" },
+                    avanzado: { border: "2px solid rgba(155, 89, 182, 0.4)", boxShadow: "0 8px 25px rgba(155, 89, 182, 0.15)" },
+                    experto: { border: "2px solid rgba(231, 76, 60, 0.4)", boxShadow: "0 8px 30px rgba(231, 76, 60, 0.2)" }
+                  };
+                  const currentGlow = glowStyles[levelClass] || glowStyles.principiante;
+
                   return (
                     <div
                       key={course.id}
                       className="card catalog-card glass"
-                      style={{ display: "flex", flexDirection: "column", cursor: "pointer", borderRadius: "20px", overflow: "hidden", padding: 0 }}
+                      style={{ display: "flex", flexDirection: "column", cursor: "pointer", borderRadius: "20px", overflow: "hidden", padding: 0, ...currentGlow }}
                     >
                       {/* Clickable body */}
                       <div
@@ -284,6 +350,59 @@ export default function Catalog() {
           ))
         )}
       </div>
+
+      {/* MODAL placement test */}
+      {testModal.open && (
+        <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.85)", backdropFilter: "blur(10px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "1rem" }}>
+          <div className="modal-card glass fade-in" style={{ padding: "2rem", width: "100%", maxWidth: "550px", borderRadius: "24px", textAlign: "center", boxShadow: "0 20px 50px rgba(0,0,0,0.4)" }}>
+            <span style={{ fontSize: "3rem" }}>📋</span>
+            <h2 style={{ marginTop: "1rem" }}>Test de Nivelación</h2>
+            <p className="subtitle" style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)" }}>
+              Para acceder al nivel {testModal.course?.level}, demuestra que tienes los fundamentos. (Aprobás con 4/5)
+            </p>
+
+            {testModal.loading ? (
+              <div style={{ margin: "2rem 0" }}>
+                <div className="loading-spinner" style={{ margin: "0 auto 1rem auto" }}></div>
+                <p style={{ fontSize: "0.85rem", opacity: 0.6 }}>Generando preguntas con el rigor académico de CursosIA...</p>
+              </div>
+            ) : testModal.questions.length > 0 ? (
+              <div style={{ marginTop: "1.5rem", textAlign: "left" }}>
+                <p style={{ fontSize: "0.75rem", color: "var(--primary-light)", fontWeight: "bold", textTransform: "uppercase" }}>Pregunta {testModal.currentIndex + 1} de 5</p>
+                <h4 style={{ margin: "0.5rem 0 1rem 0", color: "white" }}>{testModal.questions[testModal.currentIndex].pregunta}</h4>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  {testModal.questions[testModal.currentIndex].options.map((option, idx) => {
+                    const letter = option.substring(0, 1).toUpperCase();
+                    const isCorrect = letter === testModal.questions[testModal.currentIndex].respuesta_correcta.toUpperCase();
+                    
+                    return (
+                      <button
+                        key={idx}
+                        className="btn"
+                        style={{ justifyContent: "flex-start", textAlign: "left", padding: "1rem", borderRadius: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "white" }}
+                        onClick={() => handleTestAnswer(isCorrect)}
+                      >
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <p>No se pudo generar el test. Re-intenta o contacta a soporte.</p>
+            )}
+
+            <button
+              className="btn btn-outline"
+              style={{ marginTop: "2rem", width: "100%", borderColor: "rgba(255,255,255,0.2)" }}
+              onClick={() => setTestModal({ open: false })}
+            >
+              Cancelar e irme
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
