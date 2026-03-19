@@ -7,6 +7,37 @@ import "./index.css";
 import "./i18n"; // Import i18n config
 import { Toaster } from 'react-hot-toast';
 
+// Auto-update & Cache clearing logic
+const checkVersion = async () => {
+  try {
+    const res = await fetch('/version.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const localVersion = localStorage.getItem('app_version');
+    
+    if (localVersion && data.version && localVersion !== String(data.version)) {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map(r => r.unregister()));
+      }
+      localStorage.setItem('app_version', String(data.version));
+      window.location.reload(true);
+      return;
+    }
+    if (data.version) {
+      localStorage.setItem('app_version', String(data.version));
+    }
+  } catch (e) {
+    console.error('Update check failed:', e);
+  }
+};
+
+checkVersion();
+
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
