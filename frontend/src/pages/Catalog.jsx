@@ -216,14 +216,28 @@ export default function Catalog() {
               return acc;
             }, {})
           )
-          .sort(([a], [b]) => a.localeCompare(b)) // Sort Specialties alphabetically
-          .map(([topic, topicCourses]) => (
-            <div key={topic} className="catalog-category-section" style={{ marginBottom: "3rem" }}>
-              <h2 style={{ fontSize: "1.5rem", color: "var(--primary-light)", marginBottom: "1.5rem", borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: "0.5rem" }}>
-                🏷️ {topic}
-              </h2>
-              <div className="courses-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: "1.5rem" }}>
-                {topicCourses.map(course => {
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([topic, topicCourses]) => {
+            const levelOrder = { "principiante": 1, "intermedio": 2, "avanzado": 3, "experto": 4 };
+            const sortedCourses = [...topicCourses].sort((a, b) => 
+              (levelOrder[a.level?.toLowerCase()] || 99) - (levelOrder[b.level?.toLowerCase()] || 99)
+            );
+
+            return (
+              <div key={topic} className="catalog-category-section" style={{ marginBottom: "3rem" }}>
+                <h2 style={{ fontSize: "1.5rem", color: "var(--primary-light)", marginBottom: "0.5rem", borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: "0.5rem" }}>
+                  🏷️ {topic}
+                </h2>
+
+                <div className="promo-banner glass" style={{ background: "rgba(108, 92, 231, 0.1)", padding: "0.75rem 1.25rem", borderRadius: "12px", marginBottom: "1.5rem", border: "1px solid rgba(108, 92, 231, 0.25)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <span style={{ fontSize: "1.2rem" }}>🎁</span>
+                  <p style={{ margin: 0, fontSize: "0.88rem", color: "white" }}>
+                    <strong>¡Promo Especial!</strong> Niveles <strong>Intermedio y Avanzado</strong> al 50% OFF. ¡Compra ambos y obtén el <strong>Certificado de Excelencia GRATIS</strong>!
+                  </p>
+                </div>
+
+                <div className="courses-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: "1.5rem" }}>
+                  {sortedCourses.map(course => {
                   const { unidades, totalLessons } = getCursoData(course);
                   const isExpanded = expandedId === course.id;
                   const isFree = course.level?.toLowerCase() === "principiante";
@@ -257,8 +271,24 @@ export default function Catalog() {
                               🆓 Gratis (1 por mes)
                             </span>
                           ) : (
-                            <span className="badge" style={{ background: "rgba(253,121,168,0.2)", color: "var(--accent)" }}>
-                              💰 {course.currency || "USD"} {Number(course.price || 49.99).toFixed(2)}
+                            <span className="badge" style={{ background: "rgba(253,121,168,0.2)", color: "var(--accent)", display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                              {(()=>{
+                                const originalPrice = Number(course.price || 49.99);
+                                const isPromo = course.level?.toLowerCase() === "intermedio" || course.level?.toLowerCase() === "avanzado";
+                                const finalPrice = isPromo ? originalPrice / 2 : originalPrice;
+                                return (
+                                  <>
+                                    {isPromo && (
+                                      <span style={{ textDecoration: "line-through", opacity: 0.5, fontSize: "0.8em" }}>
+                                        {course.currency || "USD"} {originalPrice.toFixed(2)}
+                                      </span>
+                                    )}
+                                    <span>
+                                      💰 {course.currency || "USD"} {finalPrice.toFixed(2)} {isPromo && "(50% OFF)"}
+                                    </span>
+                                  </>
+                                );
+                              })()}
                             </span>
                           )}
                         </div>
@@ -347,7 +377,8 @@ export default function Catalog() {
                 })}
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
 
