@@ -99,7 +99,16 @@ export default function CourseView() {
       prevL = unidades[prevU]?.lecciones?.length || 0; 
     }
 
-    return isLessonCompleted(prevU, prevL);
+    const completedRecord = progress.find(p => p.unit_index === prevU && p.lesson_index === prevL);
+    if (!completedRecord || !completedRecord.completed) return false;
+
+    // Strict evaluation passing rule (score >= 7)
+    const isEvaluation = prevU >= 0 && prevL === (unidades[prevU]?.lecciones?.length || 0);
+    if (isEvaluation && typeof completedRecord.score === 'number' && completedRecord.score < 7) {
+      return false;
+    }
+
+    return true;
   };
 
   const handleNavigate = (unitIdx, lessonIdx) => {
@@ -123,7 +132,7 @@ export default function CourseView() {
       return;
     }
     const currentLessons = unidades[currentUnit]?.lecciones || [];
-    if (currentLesson < currentLessons.length - 1) {
+    if (currentLesson < currentLessons.length) {
       handleNavigate(currentUnit, currentLesson + 1);
     } else if (currentUnit < unidades.length - 1) {
       handleNavigate(currentUnit + 1, 0);
@@ -569,7 +578,10 @@ function UnitEvaluationView({ unidadActual, currentUnit, currentLesson, courseId
         <button 
           className="btn btn-primary" 
           onClick={goNext} 
-          disabled={!isLessonCompleted(currentUnit, currentLesson)}
+          disabled={
+            !isLessonCompleted(currentUnit, currentLesson) || 
+            (progress.find(p => p.unit_index === currentUnit && p.lesson_index === currentLesson)?.score || 0) < 7
+          }
         >
           Siguiente unidad →
         </button>
