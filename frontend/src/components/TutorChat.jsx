@@ -41,12 +41,20 @@ export default function TutorChat({ courseId, unitIndex, lessonIndex, accessToke
           unit_index: unitIndex,
           lesson_index: lessonIndex,
           message: userMsg,
-          history: messages.slice(1), // skip initial greeting
+          history: messages.slice(1).map(m => ({
+            role: m.role,
+            text: m.text,
+            thought_signature: m.thought_signature // Send existing signatures
+          })), 
         }),
       });
-
+ 
       const data = await res.json();
-      setMessages(prev => [...prev, { role: "model", text: data.reply || "Error del tutor" }]);
+      setMessages(prev => [...prev, { 
+        role: "model", 
+        text: data.reply || "Error del tutor",
+        thought_signature: data.thought_signature // Store new signature
+      }]);
     } catch (err) {
       setMessages(prev => [...prev, { role: "model", text: "Error de conexión. Intenta de nuevo." }]);
     } finally {

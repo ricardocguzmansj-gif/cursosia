@@ -51,7 +51,7 @@ export default function Navbar() {
 
   return (
     <nav className="navbar">
-      <Link to="/dashboard" className="navbar-brand">CursosIA</Link>
+      <Link to="/" className="navbar-brand">CursosIA</Link>
       
       <button 
         className="menu-toggle" 
@@ -77,8 +77,9 @@ export default function Navbar() {
         {session ? (
           <>
             <Link to="/dashboard" className="nav-item">🏠 {t("nav_dashboard", "Dashboard")}</Link>
-            <Link to="/my-profile" className="nav-item">👔 Mi Perfil</Link>
+            <Link to="/quality" className="nav-item" style={{ color: 'var(--accent)', fontWeight: 'bold' }}>⭐ {t("nav_quality")}</Link>
             {isAdmin && <Link to="/generate" className="nav-item">✨ {t("nav_generate", "Generar")}</Link>}
+            <Link to="/my-profile" className="nav-item">👔 Mi Perfil</Link>
             <Link to="/catalog" className="nav-item">📚 {t("nav_catalog", "Catálogo")}</Link>
             <Link to="/jobs" className="nav-item" title="Bolsa de Trabajo">💼</Link>
             <Link to="/manage-jobs" className="nav-item" title="Mis Ofertas Publicadas">📋 Mis Ofertas</Link>
@@ -92,6 +93,7 @@ export default function Navbar() {
           </>
         ) : (
           <>
+            <Link to="/quality" className="nav-item" style={{ color: 'var(--accent)', fontWeight: 'bold' }}>⭐ {t("nav_quality")}</Link>
             <Link to="/catalog" className="nav-item">📚 {t("nav_catalog", "Catálogo")}</Link>
             <Link to="/jobs" className="nav-item">💼 Empleos</Link>
             <Link to="/post-job" className="nav-item btn btn-outline" style={{ padding: "0.3rem 0.6rem", fontSize: "0.85rem", borderColor: "var(--accent-glow)", color: "var(--accent-glow)", margin: "0 0.5rem" }}>Publicar Empleo</Link>

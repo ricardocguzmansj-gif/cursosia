@@ -219,8 +219,8 @@ Deno.serve(async (req: Request) => {
     
     // OPTION C: Fallback Mechanism (Sistema de Fallback)
     const modelsToTry = isAdvanced 
-      ? ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-1.5-pro'] // Avanzado intenta Pro primero
-      : ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']; // Normal intenta Flash primero
+      ? ['gemini-3.1-pro', 'gemini-3.1-flash-lite', 'gemini-1.5-pro'] // Avanzado intenta Pro primero
+      : ['gemini-3.1-flash-lite', 'gemini-1.5-flash', 'gemini-1.5-pro']; // Normal intenta Flash-Lite primero
 
     let geminiRes;
     let geminiData;

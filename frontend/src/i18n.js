@@ -12,6 +12,7 @@ const resources = {
       "nav_login": "Iniciar sesión",
       "nav_register": "Registrarse",
       "nav_logout": "Cerrar sesión",
+      "nav_quality": "Excelencia Académica",
       
       "hero_badge": "🤖 Potenciado por Inteligencia Artificial",
       "hero_title_1": "Aprende y domina habilidades",
@@ -160,6 +161,7 @@ const resources = {
       "nav_login": "Log in",
       "nav_register": "Sign up",
       "nav_logout": "Log out",
+      "nav_quality": "Academic Excellence",
       
       "hero_badge": "🤖 Powered by Artificial Intelligence",
       "hero_title_1": "Learn and master skills",
@@ -308,6 +310,7 @@ const resources = {
       "nav_login": "Entrar",
       "nav_register": "Cadastrar",
       "nav_logout": "Sair",
+      "nav_quality": "Excelência Acadêmica",
       
       "hero_badge": "🤖 Alimentado por Inteligência Artificial",
       "hero_title_1": "Aprenda e domine habilidades",

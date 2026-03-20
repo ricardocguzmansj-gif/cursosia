@@ -63,6 +63,7 @@ const ManageJobs = React.lazy(() => import("./pages/ManageJobs"));
 const JobApplications = React.lazy(() => import("./pages/JobApplications"));
 const Workspace = React.lazy(() => import("./pages/Workspace"));
 const CompanyAuth = React.lazy(() => import("./pages/CompanyAuth"));
+const Quality = React.lazy(() => import("./pages/Quality"));
 
 function ProtectedRoute({ session, children }) {
   if (!session) return <Navigate to="/login" replace />;
@@ -226,6 +227,16 @@ function App() {
             <AppLayout>
               <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
                 <Catalog />
+              </React.Suspense>
+            </AppLayout>
+          }
+        />
+        <Route
+          path="/quality"
+          element={
+            <AppLayout>
+              <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+                <Quality />
               </React.Suspense>
             </AppLayout>
           }

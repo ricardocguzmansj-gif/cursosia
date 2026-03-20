@@ -89,13 +89,16 @@ INSTRUCCIONES:
 - NO reveles que eres IA. Actúa como un profesor real.
 - Responde en el mismo idioma que usa el alumno.`;
 
-    // Build conversation
+    // Build conversation with Thought Signature circulation
     const contents = [
       { role: "user", parts: [{ text: systemPrompt }] },
       { role: "model", parts: [{ text: "¡Hola! Estoy aquí para ayudarte con esta lección. ¿Qué necesitas?" }] },
       ...history.map((msg: any) => ({
         role: msg.role === "user" ? "user" : "model",
-        parts: [{ text: msg.text }],
+        parts: [
+          { text: msg.text },
+          ...(msg.thought_signature ? [{ thought_signature: msg.thought_signature }] : [])
+        ],
       })),
       { role: "user", parts: [{ text: message }] },
     ];
@@ -107,8 +110,8 @@ INSTRUCCIONES:
       });
     }
 
-    // Use Flash for speed (tutor should be fast)
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
+    // Use Gemini 3.1 Flash-Lite for speed and advanced reasoning
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_KEY}`;
 
     const geminiRes = await fetch(apiUrl, {
       method: "POST",
@@ -116,8 +119,9 @@ INSTRUCCIONES:
       body: JSON.stringify({
         contents,
         generationConfig: {
-          temperature: 0.8,
+          temperature: 0.7,
           maxOutputTokens: 2048,
+          thinking: { level: "MEDIUM" }
         },
       }),
     });
@@ -130,17 +134,19 @@ INSTRUCCIONES:
     }
 
     const geminiData = await geminiRes.json();
-    const reply = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude generar una respuesta. Intenta de nuevo.";
+    const candidate = geminiData.candidates?.[0];
+    const reply = candidate?.content?.parts?.find((p: any) => p.text)?.text || "Lo siento, no pude generar una respuesta. Intenta de nuevo.";
+    const thought_signature = candidate?.content?.parts?.find((p: any) => p.thought_signature)?.thought_signature;
 
     // Track event
     await supabase.from("events").insert({
       user_id: user.id,
       event_type: "tutor_message",
       course_id,
-      metadata: { unit_index, lesson_index },
+      metadata: { unit_index, lesson_index, model: "gemini-3.1-flash-lite" },
     });
 
-    return new Response(JSON.stringify({ reply }), {
+    return new Response(JSON.stringify({ reply, thought_signature }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
