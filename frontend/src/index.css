@@ -64,6 +64,13 @@
   box-sizing: border-box;
 }
 
+input, button, select, textarea {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  font-family: inherit;
+}
+
 html {
   scroll-behavior: smooth;
 }
