@@ -110,6 +110,7 @@ export default function Dashboard() {
   
   const coursesWithProgress = enrollments.map(en => {
     const course = en.courses;
+    if (!course) return null; // Guard against deleted or null courses
     const courseContent = parseCourseContent(course);
     let totalInCourse = 0;
     courseContent.unidades?.forEach(u => {
@@ -119,7 +120,7 @@ export default function Dashboard() {
     const percent = totalInCourse > 0 ? Math.round((completedInCourse / totalInCourse) * 100) : 0;
     const isOwner = en.source === 'free' && course.user_id === profile.id;
     return { ...course, percent, totalInCourse, completedInCourse, isOwner };
-  });
+  }).filter(Boolean); // Remove null items
 
   // Real Activity: compute from progress completed_at dates (last 7 days)
   const dayNames = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
