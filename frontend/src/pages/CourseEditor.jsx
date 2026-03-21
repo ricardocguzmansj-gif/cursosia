@@ -317,6 +317,27 @@ export default function CourseEditor() {
         </div>
       </section>
 
+      {/* PREMIUM AI MATERIALS FORM */}
+      <section style={{ background: "var(--bg-glass-heavy)", border: "1px solid var(--accent-primary)", padding: "2rem", borderRadius: "16px", marginBottom: "2rem" }}>
+        <h2 style={{ marginBottom: "1.5rem", color: "var(--accent-primary)" }}>📚 Materiales Premium (IA NotebookLM)</h2>
+        <div className="form-group" style={{ marginTop: "1rem" }}>
+          <label>🎧 Audio Overview URL (Podcast generado por NotebookLM)</label>
+          <input className="input-field" placeholder="https://..." value={contentObj.audio_overview_url || ""} onChange={e => setContentObj({...contentObj, audio_overview_url: e.target.value})} />
+          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>Pega aquí el enlace directo al archivo de audio MP3 u OGG generado por NotebookLM.</p>
+        </div>
+        <div className="form-group" style={{ marginTop: "1rem" }}>
+          <label>🗺️ Mapa Mental (MermaidJS Markdown)</label>
+          <textarea 
+            className="input-field" 
+            rows={5}
+            placeholder="graph TD; A-->B;" 
+            value={contentObj.mindmap_markdown || ""} 
+            onChange={e => setContentObj({...contentObj, mindmap_markdown: e.target.value})} 
+          />
+          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>Escribe aquí la sintaxis Mermaid de tu mapa mental para visualizar el curso completo.</p>
+        </div>
+      </section>
+
       {/* UNIDADES FORM */}
       <section>
         <h2 style={{ marginBottom: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>

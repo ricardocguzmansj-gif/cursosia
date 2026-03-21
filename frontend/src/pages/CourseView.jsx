@@ -303,6 +303,8 @@ export default function CourseView() {
             {currentLesson < unidades[currentUnit].lecciones.length ? (
               <LessonView 
                 curso={curso}
+                course={course}
+                isAdmin={isAdmin}
                 currentUnit={currentUnit}
                 currentLesson={currentLesson}
                 courseId={id}
@@ -380,6 +382,52 @@ function CourseOverview({ curso, course, onStart, hasProgress, enrollment }) {
         </div>
       </div>
 
+      {/* AUDIO OVERVIEW (NotebookLM Podcast) */}
+      {curso.audio_overview_url && (
+        <div className="audio-podcast-card glass premium-glow" style={{ marginBottom: "2rem", padding: "1.5rem", borderRadius: "16px", display: "flex", flexDirection: "column", gap: "1rem", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: -20, right: -20, fontSize: "6rem", opacity: 0.05, transform: "rotate(15deg)" }}>🎧</div>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem", zIndex: 1 }}>
+            <div style={{ background: "linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))", width: "50px", height: "50px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", boxShadow: "0 0 15px rgba(108, 92, 237, 0.4)" }}>
+              🎙️
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: "1.2rem", color: "var(--text-bright)" }}>Podcast Oficial del Curso</h3>
+              <p style={{ margin: 0, fontSize: "0.9rem", color: "var(--text-muted)" }}>Resumen de Alta Calidad generado por IA (NotebookLM)</p>
+            </div>
+          </div>
+          <audio controls src={curso.audio_overview_url} style={{ width: "100%", zIndex: 1, borderRadius: "8px", outline: "none" }} preload="none">
+            Tu navegador no soporta el elemento de audio.
+          </audio>
+        </div>
+      )}
+
+      {/* MINDMAP (Mermaid Markdown) */}
+      {curso.mindmap_markdown && (
+        <div className="mindmap-card glass" style={{ marginBottom: "2rem", padding: "2rem", borderRadius: "16px", borderLeft: "4px solid var(--accent-secondary)" }}>
+          <h2 style={{ marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span>🗺️</span> Mapa Mental del Curso
+          </h2>
+          <div style={{ background: "white", padding: "1.5rem", borderRadius: "8px", overflowX: "auto", display: "flex", justifyContent: "center" }}>
+            {(() => {
+              try {
+                const encoded = btoa(unescape(encodeURIComponent(curso.mindmap_markdown)));
+                return <img src={`https://mermaid.ink/img/${encoded}`} alt="Mapa Mental del Curso" style={{ maxWidth: "100%", height: "auto" }} />;
+              } catch (e) {
+                return <pre style={{ color: "var(--accent-primary)", whiteSpace: "pre-wrap" }}>{curso.mindmap_markdown}</pre>;
+              }
+            })()}
+          </div>
+          <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "1rem", textAlign: "right" }}>
+            *Visualización de estructura (MermaidJS)*
+          </p>
+        </div>
+      )}
+
+      {/* FLASHCARDS INTERACTIVAS */}
+      {curso.flashcards && curso.flashcards.length > 0 && (
+        <FlashcardsViewer flashcards={curso.flashcards} />
+      )}
+
 
       {/* Learning Objectives */}
       {curso.objetivos_aprendizaje && curso.objetivos_aprendizaje.length > 0 && (
@@ -432,10 +480,11 @@ function CourseOverview({ curso, course, onStart, hasProgress, enrollment }) {
 }
 
 // ==================== LESSON VIEW ====================
-function LessonView({ curso, currentUnit, currentLesson, courseId, isLessonCompleted, progress, setProgress, goNext, goPrev, unidades }) {
+function LessonView({ curso, course, isAdmin, currentUnit, currentLesson, courseId, isLessonCompleted, progress, setProgress, goNext, goPrev, unidades }) {
   const unidadActual = unidades[currentUnit];
   const leccion = unidadActual?.lecciones?.[currentLesson];
-  const savedRef = useRef({});
+  const savedRef = React.useRef({});
+  const [isGenerating, setIsGenerating] = React.useState(false);
 
   // Auto-save progress when viewing a lesson (for lessons WITHOUT a quiz)
   useEffect(() => {
@@ -477,10 +526,59 @@ function LessonView({ curso, currentUnit, currentLesson, courseId, isLessonCompl
           <span className="lesson-num">{currentUnit + 1}.{currentLesson + 1}</span>
           {leccion.titulo}
         </h1>
-        <div style={{ marginTop: "1rem" }}>
-          <AudioPlayer text={leccion.explicacion} />
-        </div>
+        {leccion.explicacion && (
+          <div style={{ marginTop: "1rem" }}>
+            <AudioPlayer text={leccion.explicacion} />
+          </div>
+        )}
       </div>
+
+      {!leccion.explicacion && isAdmin && (
+        <div className="content-card glass" style={{ textAlign: "center", padding: "4rem 2rem", margin: "2rem 0" }}>
+          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🪄</div>
+          <h2 style={{ marginBottom: "1rem" }}>Esta lección aún no tiene contenido</h2>
+          <p style={{ color: "var(--text-muted)", marginBottom: "2rem", maxWidth: "500px", margin: "0 auto 2rem" }}>
+            Como administrador, puedes utilizar el Motor de Excelencia Académica (IA) para redactar el contenido completo, crear ejemplos aplicados y generar actividades prácticas para esta lección instantáneamente.
+          </p>
+          <button 
+            className="btn btn-accent btn-lg" 
+            onClick={async () => {
+              setIsGenerating(true);
+              try {
+                const lessonDetails = await api.generateCourse({
+                  mode: 'expand-lesson',
+                  tema: course?.topic || curso.titulo,
+                  nivel: course?.level || 'principiante',
+                  perfil: course?.profile || 'estudiante',
+                  current_syllabus: { curso: curso },
+                  unit_index: currentUnit,
+                  lesson_index: currentLesson
+                });
+                
+                // Actualizar localmente el cursor
+                const newCurso = JSON.parse(JSON.stringify(curso));
+                newCurso.unidades[currentUnit].lecciones[currentLesson] = {
+                  ...leccion,
+                  ...lessonDetails
+                };
+                
+                // Actualizar DB
+                await api.updateCourseData(courseId, { content: { curso: newCurso } });
+                toast.success("¡Lección generada exitosamente!");
+                setTimeout(() => window.location.reload(), 1500);
+              } catch (e) {
+                toast.error("Error al generar la lección: " + e.message);
+              } finally {
+                setIsGenerating(false);
+              }
+            }}
+            disabled={isGenerating}
+            style={{ minWidth: "250px" }}
+          >
+            {isGenerating ? "⏳ Escribiendo lección..." : "✨ Generar Lección con IA"}
+          </button>
+        </div>
+      )}
 
       {/* Video Block */}
       {leccion.video_url && <VideoPlayer url={leccion.video_url} />}
@@ -494,10 +592,22 @@ function LessonView({ curso, currentUnit, currentLesson, courseId, isLessonCompl
       )}
 
       {/* Explicación Block */}
-      <div className="content-card block-theory">
-        <div className="block-tag"><span className="block-icon">📖</span> Explicación</div>
-        <div className="block-body">{leccion.explicacion}</div>
-      </div>
+      {leccion.explicacion ? (
+        <div className="content-card block-theory">
+          <div className="block-tag"><span className="block-icon">📖</span> Explicación</div>
+          <div className="block-body">{leccion.explicacion}</div>
+        </div>
+      ) : (
+        !isAdmin && (
+          <div className="content-card glass" style={{ textAlign: "center", padding: "3rem 1rem", margin: "2rem 0" }}>
+            <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🚧</div>
+            <h3>Lección en Construcción</h3>
+            <p style={{ color: "var(--text-muted)", marginTop: "0.5rem" }}>
+              Nuestros expertos están elaborando el contenido detallado de esta lección. ¡Vuelve pronto!
+            </p>
+          </div>
+        )
+      )}
 
       {/* Ejemplo Block */}
       {leccion.ejemplo_aplicado && (
@@ -908,6 +1018,70 @@ function QuizWidget({ questions, courseId, unitIndex, lessonIndex, onComplete })
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+// ==================== FLASHCARDS VIEWER ====================
+function FlashcardsViewer({ flashcards }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isFlipped, setIsFlipped] = useState(false);
+
+  if (!flashcards || flashcards.length === 0) return null;
+
+  const currentCard = flashcards[currentIndex];
+
+  const handleNext = () => {
+    setIsFlipped(false);
+    setTimeout(() => {
+      setCurrentIndex((prev) => (prev + 1) % flashcards.length);
+    }, 150);
+  };
+
+  const handlePrev = () => {
+    setIsFlipped(false);
+    setTimeout(() => {
+      setCurrentIndex((prev) => (prev - 1 + flashcards.length) % flashcards.length);
+    }, 150);
+  };
+
+  return (
+    <div className="flashcards-container" style={{ marginBottom: "2rem", background: "linear-gradient(180deg, rgba(80,80,255,0.05) 0%, rgba(80,80,255,0.01) 100%)", padding: "2rem", borderRadius: "16px", border: "1px solid rgba(80,80,255,0.1)" }}>
+      <h2 style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <span>📇</span> Práctica Rápida (Flashcards)
+      </h2>
+      <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginBottom: "1.5rem" }}>Toca la tarjeta para ver la respuesta.</p>
+      
+      <div 
+        className="flashcard-scene" 
+        style={{ perspective: "1000px", height: "250px", width: "100%", maxWidth: "600px", margin: "0 auto", cursor: "pointer" }}
+        onClick={() => setIsFlipped(!isFlipped)}
+      >
+        <div 
+          className="flashcard" 
+          style={{ 
+            width: "100%", height: "100%", position: "relative", transition: "transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1)", 
+            transformStyle: "preserve-3d", transform: isFlipped ? "rotateX(180deg)" : "rotateX(0deg)" 
+          }}
+        >
+          {/* Front */}
+          <div style={{ position: "absolute", width: "100%", height: "100%", backfaceVisibility: "hidden", background: "var(--bg-card)", border: "2px solid var(--accent-primary)", borderRadius: "16px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem", textAlign: "center", boxShadow: "0 10px 30px rgba(0,0,0,0.1)" }}>
+             <span style={{ position: "absolute", top: "1rem", right: "1rem", opacity: 0.3, fontSize: "0.8rem", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px" }}>Pregunta</span>
+             <h3 style={{ fontSize: "1.4rem", margin: 0, color: "var(--text-bright)" }}>{currentCard.pregunta}</h3>
+          </div>
+          {/* Back */}
+          <div style={{ position: "absolute", width: "100%", height: "100%", backfaceVisibility: "hidden", background: "var(--accent-primary)", color: "white", borderRadius: "16px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem", textAlign: "center", transform: "rotateX(180deg)", boxShadow: "0 10px 30px rgba(108, 92, 237, 0.3)" }}>
+             <span style={{ position: "absolute", top: "1rem", right: "1rem", opacity: 0.5, fontSize: "0.8rem", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px" }}>Respuesta</span>
+             <p style={{ fontSize: "1.2rem", margin: 0, fontWeight: "500" }}>{currentCard.respuesta}</p>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "1.5rem", marginTop: "2rem" }}>
+        <button className="btn btn-outline" onClick={handlePrev} style={{ borderRadius: "50%", width: "45px", height: "45px", padding: 0 }}>←</button>
+        <span style={{ fontWeight: "bold", color: "var(--text-secondary)" }}>{currentIndex + 1} / {flashcards.length}</span>
+        <button className="btn btn-outline" onClick={handleNext} style={{ borderRadius: "50%", width: "45px", height: "45px", padding: 0 }}>→</button>
+      </div>
     </div>
   );
 }
