@@ -298,7 +298,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    if (mode === 'expand-lesson' || mode === 'placement-test') {
+    if (mode === 'expand-lesson' || mode === 'placement-test' || mode === 'syllabus-only') {
       return new Response(JSON.stringify(courseContent), {
         headers: { ...headers, 'Content-Type': 'application/json' },
       });

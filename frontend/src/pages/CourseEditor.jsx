@@ -217,6 +217,7 @@ export default function CourseEditor() {
   
   const [courseMetadata, setCourseMetadata] = useState(null); // title, topic, etc.
   const [contentObj, setContentObj] = useState(null); // parsed JSON 
+  const [generatingSyllabus, setGeneratingSyllabus] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -327,6 +328,44 @@ export default function CourseEditor() {
             + Nueva Unidad
           </button>
         </h2>
+
+        {(!contentObj.unidades || contentObj.unidades.length === 0) && (
+          <div className="content-card glass" style={{ textAlign: "center", padding: "3rem", margin: "2rem 0" }}>
+             <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>✨</div>
+             <h3 style={{ marginBottom: "1rem" }}>Generar Plan de Estudios desde Cero</h3>
+             <p style={{ color: "var(--text-muted)", marginBottom: "2rem" }}>
+               Usa la Inteligencia Artificial para crear un temario completo para este curso basado en sus parámetros generales.
+             </p>
+             <button 
+               className="btn btn-accent btn-lg"
+               disabled={generatingSyllabus}
+               onClick={async () => {
+                 setGeneratingSyllabus(true);
+                 try {
+                   const result = await api.generateCourse({
+                     mode: 'syllabus-only',
+                     tema: courseMetadata.topic || courseMetadata.title,
+                     nivel: courseMetadata.level,
+                     perfil: courseMetadata.profile,
+                     objetivo: courseMetadata.objective,
+                     tiempo: courseMetadata.duration || "2 horas"
+                   });
+                   
+                   if (result.content && result.content.curso) {
+                     setContentObj(result.content.curso);
+                     toast.success("¡Plan de estudios generado!");
+                   }
+                 } catch (e) {
+                   toast.error("Error al generar: " + e.message);
+                 } finally {
+                   setGeneratingSyllabus(false);
+                 }
+               }}
+             >
+               {generatingSyllabus ? "⏳ Diseñando Syllabus..." : "🪄 Generar Temario con IA"}
+             </button>
+          </div>
+        )}
 
         {contentObj.unidades?.map((u, uIdx) => (
           <UnidadEditor 
