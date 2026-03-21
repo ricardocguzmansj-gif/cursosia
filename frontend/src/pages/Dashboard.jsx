@@ -28,7 +28,7 @@ export default function Dashboard() {
       setData(dashboardData);
       setRole(userRole);
       
-      if (!dashboardData.profile.onboarding_completed) {
+      if (dashboardData && dashboardData.profile && !dashboardData.profile.onboarding_completed) {
         setShowOnboarding(true);
       }
     } catch (error) {
@@ -102,7 +102,19 @@ export default function Dashboard() {
     return <div className="loading-screen"><div className="loading-spinner"></div></div>;
   }
 
-  const { profile, enrollments, progress } = data;
+  if (!data || !data.profile) {
+    return (
+      <div className="dashboard-page fade-in" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', flexDirection: 'column', textAlign: 'center' }}>
+        <h2>Error cargando tus datos</h2>
+        <p style={{ color: "var(--text-muted)", marginBottom: "1.5rem" }}>
+          Hemos encontrado un problema al cargar tu perfil. Es posible que tu registro no se haya completado correctamente o haya un problema de conexión.
+        </p>
+        <button className="btn btn-primary" onClick={() => window.location.reload()}>Recargar página</button>
+      </div>
+    );
+  }
+
+  const { profile, enrollments = [], progress = [] } = data;
 
   // Process data for the UI
   const totalCourses = enrollments?.length || 0;
@@ -116,9 +128,9 @@ export default function Dashboard() {
     courseContent.unidades?.forEach(u => {
       totalInCourse += u.lecciones?.length || 0;
     });
-    const completedInCourse = progress.filter(p => p.course_id === course.id).length;
+    const completedInCourse = progress.filter(p => p && p.course_id === course?.id).length;
     const percent = totalInCourse > 0 ? Math.round((completedInCourse / totalInCourse) * 100) : 0;
-    const isOwner = en.source === 'free' && course.user_id === profile.id;
+    const isOwner = en.source === 'free' && course?.user_id === profile.id;
     return { ...course, percent, totalInCourse, completedInCourse, isOwner };
   }).filter(Boolean); // Remove null items
 

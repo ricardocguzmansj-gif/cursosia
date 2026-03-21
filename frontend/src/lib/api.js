@@ -638,6 +638,15 @@ export const api = {
     return data;
   },
 
+  getAllJobsAdmin: async () => {
+    const { data, error } = await supabase
+      .from("job_postings")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
   adminToggleCourseStatus: async (courseId, status) => {
     const { data, error } = await supabase.rpc('admin_toggle_course_status', {
       target_course_id: courseId,

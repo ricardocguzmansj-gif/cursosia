@@ -210,6 +210,7 @@ export default function Catalog() {
         ) : (
           Object.entries(
             filtered.reduce((acc, c) => {
+              if (!c) return acc;
               const topic = c.topic?.trim() || "General";
               if (!acc[topic]) acc[topic] = [];
               acc[topic].push(c);
