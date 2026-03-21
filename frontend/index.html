@@ -23,9 +23,21 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
+      // Force unregister and clear caches for any old sw.js
       if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          for (const registration of registrations) {
+            registration.unregister();
+          }
+        });
+        if ('caches' in window) {
+          caches.keys().then(names => {
+            for (const name of names) caches.delete(name);
+          });
+        }
+        // Register the new versioned service worker
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
+          navigator.serviceWorker.register('/sw-v2.js').catch(() => {});
         });
       }
     </script>

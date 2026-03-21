@@ -1,5 +1,4 @@
-// @ts-ignore: Supabase JS import works in Deno runtime
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 // @ts-ignore: Deno is a global in Supabase Edge Functions
 const getSystemPrompt = (targetLanguage: string, mode: string = 'full') => {

@@ -175,10 +175,20 @@ export default function CourseView() {
   const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
+
   return (
-    <div className="course-viewer">
+    <div className={`course-viewer ${isSidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+      <button 
+        className="sidebar-toggle"
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        title={isSidebarOpen ? "Cerrar Temario" : "Ver Temario"}
+      >
+        {isSidebarOpen ? "✕" : "📚"}
+      </button>
+
       {/* Sidebar */}
-      <aside className="course-sidebar">
+      <aside className={`course-sidebar ${isSidebarOpen ? 'open' : ''}`}>
         {isAdmin && (
           <div style={{ marginBottom: "1rem" }}>
             <Link to={`/admin/course/${id}/edit`} className="btn btn-primary" style={{ width: "100%", textAlign: "center", display: "block" }}>
@@ -186,7 +196,16 @@ export default function CourseView() {
             </Link>
           </div>
         )}
-        <h2>{curso.titulo}</h2>
+        <div className="sidebar-header-desktop">
+          <h2>{curso.titulo}</h2>
+          <button 
+            className="sidebar-close-btn"
+            onClick={() => setIsSidebarOpen(false)}
+            title="Ocultar temario"
+          >
+            ✕
+          </button>
+        </div>
 
         <div className="progress-bar">
           <div className="progress-fill" style={{ width: `${progressPercent}%` }}></div>

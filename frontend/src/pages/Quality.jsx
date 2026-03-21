@@ -279,11 +279,10 @@ export default function Quality() {
           line-height: 1.4;
         }
         @media (max-width: 768px) {
-          .quality-hero { padding: 6rem 1.5rem 4rem; }
-          .quality-hero h1 { font-size: 2.5rem; }
-          .comparison-section { padding: 1.5rem; }
-          .comparison-table th, .comparison-table td { padding: 1.25rem; font-size: 0.95rem; }
-          .row-title { width: auto; }
+          .quality-hero { padding: 4rem 1.5rem 2rem; }
+          .quality-grid { gap: 1.5rem; margin-bottom: 3rem; }
+          .quality-card { padding: 2rem; }
+          .quality-footer { padding: 2rem; margin-top: 3rem; }
         }
       `}} />
     </div>

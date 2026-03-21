@@ -131,7 +131,7 @@ function App() {
     <TenantProvider>
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={<AppLayout><Landing /></AppLayout>} />
         <Route path="/login" element={session ? <Navigate to="/dashboard" replace /> : <Login />} />
         <Route path="/register" element={session ? <Navigate to="/dashboard" replace /> : <Register />} />
         <Route path="/empresas/login" element={session ? <Navigate to="/manage-jobs" replace /> : <React.Suspense fallback={<div>...</div>}><CompanyAuth /></React.Suspense>} />
