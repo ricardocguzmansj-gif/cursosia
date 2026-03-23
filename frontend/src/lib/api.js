@@ -182,8 +182,8 @@ export const api = {
         course_reviews (rating)
       `)
       .eq("is_published", true)
-      .eq("is_approved", true)
       .eq("is_blocked", false)
+      .neq("title", "TBD")
       .order("topic", { ascending: true })
       .order("title", { ascending: true });
     
@@ -647,6 +647,17 @@ export const api = {
     return data;
   },
 
+  updateJobStatus: async (jobId, status) => {
+    const { data, error } = await supabase
+      .from("job_postings")
+      .update({ status })
+      .eq("id", jobId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
   adminToggleCourseStatus: async (courseId, status) => {
     const { data, error } = await supabase.rpc('admin_toggle_course_status', {
       target_course_id: courseId,
@@ -715,7 +726,7 @@ export const api = {
 
     const { data, error } = await supabase
       .from('job_applications')
-      .select('*, job_postings(*, employer_profiles:profiles!job_postings_employer_id_fkey(full_name))')
+      .select('*, job_postings(*)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
@@ -755,7 +766,7 @@ export const api = {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
 
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/release-escrow`, {
+    const res = await fetch(`${EDGE_FUNCTION_URL}/release-escrow`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -834,13 +845,29 @@ export const api = {
   },
 
   getDisputes: async () => {
-    const { data, error } = await supabase
+    const { data: disputes, error } = await supabase
       .from('job_disputes')
-      .select('*, application:job_applications(*, profiles(full_name))')
+      .select('*, application:job_applications(*)')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data;
+    if (!disputes) return [];
+
+    // Manually fetch user profiles as there's no direct FK from job_applications to profiles
+    const userIds = disputes.map(d => d.application?.user_id).filter(Boolean);
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', userIds);
+      const profileMap = {};
+      profiles?.forEach(p => profileMap[p.id] = p.full_name);
+      
+      disputes.forEach(d => {
+        if (d.application) {
+          d.application.profiles = { full_name: profileMap[d.application.user_id] || "Desconocido" };
+        }
+      });
+    }
+
+    return disputes;
   },
 
   resolveDispute: async (disputeId, resolutionNote, newStatus) => {

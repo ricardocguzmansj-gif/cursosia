@@ -23,6 +23,7 @@ export default function CourseView() {
   const [enrollment, setEnrollment] = useState(null);
   const [lastPosition, setLastPosition] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
 
   // Read continue position from URL params
   const searchParams = new URLSearchParams(window.location.search);
@@ -38,7 +39,7 @@ export default function CourseView() {
       const promises = [api.getCourse(id)];
       if (user) {
         promises.push(api.getProgress(id));
-        promises.push(supabase.from("course_enrollments").select("*").eq("course_id", id).eq("user_id", user.id).single());
+        promises.push(supabase.from("course_enrollments").select("*").eq("course_id", id).eq("user_id", user.id).maybeSingle());
         promises.push(api.getLastPosition(id));
         promises.push(api.isAdmin());
       }
@@ -174,8 +175,6 @@ export default function CourseView() {
   const completedLessons = progress.filter(p => p.completed).length;
   const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
-
-  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
 
   return (
     <div className={`course-viewer ${isSidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
@@ -364,10 +363,14 @@ function CourseOverview({ curso, course, onStart, hasProgress, enrollment }) {
       {!enrollment && (
         <div className="banner-auth glass" style={{ padding: "1.2rem", marginBottom: "1.5rem", borderRadius: "16px", background: "rgba(100, 149, 237, 0.15)", border: "1px solid rgba(100, 149, 237, 0.3)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <span style={{ fontSize: "1.5rem" }}>🔒</span>
-            <p style={{ margin: 0, color: "white", fontWeight: "600" }}>Debes Registrarte o Iniciar sesión para continuar</p>
+            <span style={{ fontSize: "1.5rem" }}>{localStorage.getItem("access_token") ? "📝" : "🔒"}</span>
+            <p style={{ margin: 0, color: "white", fontWeight: "600" }}>
+              {localStorage.getItem("access_token") 
+                ? "Inscríbete en este curso para desbloquear todas las lecciones y evaluaciones." 
+                : "Debes Registrarte o Iniciar sesión para acceder al contenido completo."}
+            </p>
           </div>
-          <Link to="/login" className="btn btn-sm btn-accent">Ir a LogIn</Link>
+          {!localStorage.getItem("access_token") && <Link to="/login" className="btn btn-sm btn-accent">Ir a LogIn</Link>}
         </div>
       )}
       {/* Course Header */}

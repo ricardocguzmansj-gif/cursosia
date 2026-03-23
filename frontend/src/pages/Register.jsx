@@ -61,6 +61,13 @@ export default function Register() {
     setError("");
     setLoading(true);
 
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      setError("Por favor ingresa un email válido.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error: authError } = await supabase.auth.signUp({
         email,

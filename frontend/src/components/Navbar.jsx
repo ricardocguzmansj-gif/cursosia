@@ -22,12 +22,12 @@ export default function Navbar() {
     document.documentElement.setAttribute('data-theme', theme);
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) api.getUserRole().then(r => setRole(r));
+      if (session) api.getUserRole().then(r => setRole(r)).catch(() => setRole('alumno'));
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) api.getUserRole().then(r => setRole(r));
+      if (session) api.getUserRole().then(r => setRole(r)).catch(() => setRole('alumno'));
       else setRole(null);
     });
 
@@ -68,7 +68,7 @@ export default function Navbar() {
 
       <div className={`navbar-links ${isMenuOpen ? 'open' : ''}`}>
         <select 
-          value={i18n.language.split('-')[0] || 'es'} 
+          value={i18n.language?.split('-')[0] || 'es'} 
           onChange={changeLanguage}
           className="lang-select"
         >
@@ -89,9 +89,10 @@ export default function Navbar() {
             <Link to="/jobs" className="nav-item" title="Bolsa de Trabajo">💼</Link>
             <Link to="/manage-jobs" className="nav-item" title="Mis Ofertas Publicadas">📋 Mis Ofertas</Link>
             <Link to="/post-job" className="nav-item btn btn-outline" style={{ padding: "0.3rem 0.6rem", fontSize: "0.8rem", borderColor: "var(--accent-glow)", color: "var(--accent-glow)" }}>Publicar Empleo</Link>
-            <Link to="/leaderboard" className="nav-item" title="Ranking">🏆</Link>
-            <Link to="/analytics" className="nav-item" title="Estadísticas">📊</Link>
-            <Link to="/affiliates" className="nav-item" title="Afiliados">🤝</Link>
+            <Link to="/leaderboard" className="nav-item" title="Ranking">🏆 {t("nav_ranking", "Ranking")}</Link>
+            <Link to="/analytics" className="nav-item" title="Estadísticas">📊 {t("nav_stats", "Estadísticas")}</Link>
+            <Link to="/affiliates" className="nav-item" title="Afiliados">🤝 {t("nav_affiliates", "Afiliados")}</Link>
+            <Link to="/my-certificates" className="nav-item">🎓 {t("nav_certificates", "Certificados")}</Link>
             {isAdmin && <Link to="/admin" className="nav-item nav-admin">🛡️ {t("nav_admin", "Admin")}</Link>}
             <NotificationBell />
             <button onClick={handleLogout}>{t("nav_logout")}</button>

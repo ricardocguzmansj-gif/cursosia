@@ -64,7 +64,7 @@ export default function Workspace() {
       // Load Application details (to know roles and status)
       const { data: appData, error: appError } = await supabase
         .from('job_applications')
-        .select('*, job_postings(*, employer_profiles:profiles!job_postings_employer_id_fkey(full_name, is_verified)), talent:profiles!job_applications_user_id_fkey(full_name, is_verified)')
+        .select('*, job_postings(*), talent:profiles!job_applications_user_id_fkey(full_name, is_verified)')
         .eq('id', applicationId)
         .single();
         
@@ -167,9 +167,9 @@ export default function Workspace() {
           <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>Workspace: {application.job_postings.title}</h1>
           <p style={{ color: 'var(--text-muted)', margin: 0 }}>
             {isEmployer ? (
-              <>Talento: {application.talent.full_name} {application.talent.is_verified && <span title="Verificado" style={{ color: "var(--accent)" }}>✔️</span>}</>
+              <>Talento: {application.talent?.full_name} {application.talent?.is_verified && <span title="Verificado" style={{ color: "var(--accent)" }}>✔️</span>}</>
             ) : (
-              <>Cliente: {application.job_postings.employer_profiles.full_name} {application.job_postings.employer_profiles.is_verified && <span title="Verificado" style={{ color: "var(--accent)" }}>✔️</span>}</>
+              <>Cliente: {application.job_postings?.company_name}</>
             )}
           </p>
         </div>

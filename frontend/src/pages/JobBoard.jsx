@@ -24,7 +24,7 @@ export default function JobBoard() {
     try {
       const { data, error } = await supabase
         .from('job_postings')
-        .select('*, employer:profiles!employer_id(is_verified)')
+        .select('*')
         .eq('status', 'open')
         .order('created_at', { ascending: false });
 

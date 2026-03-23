@@ -307,6 +307,18 @@ function App() {
           }
         />
         <Route
+          path="/my-certificates"
+          element={
+            <ProtectedRoute session={session}>
+              <AppLayout>
+                <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+                  <MyProfile />
+                </React.Suspense>
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/analytics"
           element={
             <ProtectedRoute session={session}>
@@ -330,6 +342,7 @@ function App() {
             </ProtectedRoute>
            }
         />
+        <Route path="/afiliados" element={<Navigate to="/affiliates" replace />} />
         <Route
           path="/leaderboard"
           element={
@@ -342,6 +355,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster position="top-center" toastOptions={{
         style: {

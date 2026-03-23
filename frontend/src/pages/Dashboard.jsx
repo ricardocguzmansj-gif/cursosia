@@ -218,7 +218,7 @@ export default function Dashboard() {
                       <div className="dash-course-content">
                         <div className="dash-course-info">
                           <span className="badge badge-level">{c.level}</span>
-                          <h3>{c.title}</h3>
+                          <h3>{c.title || "Curso sin título"}</h3>
                           <p>{c.topic}</p>
                         </div>
                         <div className="dash-course-progress">

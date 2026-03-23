@@ -42,14 +42,18 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.match(event.request).then((cached) => {
-        const fetched = fetch(event.request).then((networkResponse) => {
+        const fetchedPromise = fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             cache.put(event.request, networkResponse.clone());
           }
           return networkResponse;
-        }).catch(() => cached);
+        }).catch(() => {
+          // If offline and no cache, return a generic 503
+          return cached ? cached : new Response('Offline', { status: 503 });
+        });
 
-        return cached || fetched;
+        // Always return cached first if exists, otherwise wait for network
+        return cached || fetchedPromise;
       });
     })
   );

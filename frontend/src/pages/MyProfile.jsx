@@ -293,7 +293,7 @@ export default function MyProfile() {
                 <div>
                   <h4 style={{ margin: 0, fontSize: '1.1rem' }}>{app.job_postings?.title}</h4>
                   <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    Cliente: {app.job_postings?.employer_profiles?.full_name || 'Desconocido'}
+                    Cliente: {app.job_postings?.company_name || 'Desconocido'}
                   </p>
                   <span style={{ fontSize: '0.85rem', color: 'var(--primary-light)', fontWeight: 'bold' }}>
                     💰 Oferta: ${app.bid_amount} USD
@@ -315,6 +315,27 @@ export default function MyProfile() {
                     </Link>
                   )}
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      
+      {/* SECCIÓN CERTIFICADOS */}
+      <div className="card glass" style={{ marginTop: '2rem', background: 'rgba(108, 92, 231, 0.05)' }}>
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>🎓 Mis Certificados Oficiales</h3>
+        {(profile?.certificates || []).length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', margin: 0 }}>Aún no has obtenido certificados. Completa cursos y aprueba el examen final para verlos aquí.</p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+            {profile.certificates.map(cert => (
+              <div key={cert.course_id} className="glass" style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+                <span className="badge badge-level" style={{ marginBottom: '0.5rem' }}>Aprobado</span>
+                <h4 style={{ margin: '0 0 0.5rem 0' }}>Certificado: {cert.course_title || 'Curso CursosIA'}</h4>
+                <p style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '1rem' }}>Otorgado el: {new Date(cert.completed_at).toLocaleDateString()}</p>
+                <Link to={`/certificate/${cert.course_id}`} className="btn btn-primary btn-sm" style={{ width: '100%' }}>
+                  👁️ Ver Certificado
+                </Link>
               </div>
             ))}
           </div>
