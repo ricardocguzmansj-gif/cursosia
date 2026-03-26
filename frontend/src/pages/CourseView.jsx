@@ -664,15 +664,17 @@ function UnitEvaluationView({ unidadActual, currentUnit, currentLesson, courseId
     }
   }, [unidadActual]);
 
-  if (!questions || questions.length === 0) {
-    // If absolutely no questions, auto complete
-    useEffect(() => {
-      if (!isLessonCompleted(currentUnit, currentLesson)) {
-        api.saveProgress(courseId, currentUnit, currentLesson, null).then(() => {
-          setProgress(prev => [...prev, { unit_index: currentUnit, lesson_index: currentLesson, completed: true, score: null }]);
-        });
-      }
-    }, []);
+  const noQuestions = !questions || questions.length === 0;
+
+  useEffect(() => {
+    if (noQuestions && !isLessonCompleted(currentUnit, currentLesson)) {
+      api.saveProgress(courseId, currentUnit, currentLesson, null).then(() => {
+        setProgress(prev => [...prev, { unit_index: currentUnit, lesson_index: currentLesson, completed: true, score: null }]);
+      });
+    }
+  }, [noQuestions]);
+
+  if (noQuestions) {
     return (
       <div className="lesson-header">
         <h1>Unidad Completada</h1>

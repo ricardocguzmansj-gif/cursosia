@@ -33,31 +33,43 @@ self.addEventListener('fetch', (event) => {
   if (
     url.pathname.includes('/functions/') || 
     url.host.includes('supabase') ||
-    url.pathname.includes('chrome-extension')
+    url.pathname.includes('chrome-extension') ||
+    url.pathname.includes('/rest/v1/')
   ) {
     return;
   }
 
-  // Stale-While-Revalidate strategy
+  // For navigation requests (HTML), try network first, then cache
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
+  // For other assets: Stale-While-Revalidate strategy
   event.respondWith(
     (async () => {
       try {
         const cache = await caches.open(CACHE_NAME);
         const cached = await cache.match(event.request);
         
-        const fetchedPromise = fetch(event.request).then(async (networkResponse) => {
+        const fetchedPromise = fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             cache.put(event.request, networkResponse.clone());
           }
           return networkResponse;
         }).catch(() => {
-          return cached || new Response('Offline', { status: 503 });
+          // If network fails, return cached or a minimal fallback
+          return cached || new Response('Offline', { 
+            status: 503, 
+            headers: { 'Content-Type': 'text/plain' } 
+          });
         });
 
         return cached || fetchedPromise;
       } catch (err) {
-        console.error('SW Error:', err);
-        return new Response('Internal Service Worker Error', { status: 500 });
+        return fetch(event.request);
       }
     })()
   );
