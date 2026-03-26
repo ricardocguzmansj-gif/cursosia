@@ -7,7 +7,7 @@ import { supabase } from "../lib/supabase";
 import TutorChat from "../components/TutorChat";
 
 import ReviewSection from "../components/ReviewSection";
-import DiscussionPanel from "../components/DiscussionPanel";
+import LessonForum from "../components/LessonForum";
 import AudioPlayer from "../components/AudioPlayer";
 import LinkedInShare from "../components/LinkedInShare";
 import VideoPlayer from "../components/VideoPlayer";
@@ -628,7 +628,7 @@ function LessonView({ curso, course, isAdmin, currentUnit, currentLesson, course
         </div>
       )}
 
-      <DiscussionPanel courseId={courseId} unitIndex={currentUnit} lessonIndex={currentLesson} />
+      <LessonForum courseId={courseId} unitIndex={currentUnit} lessonIndex={currentLesson} />
 
       {/* Navigation */}
       <div className="lesson-nav">

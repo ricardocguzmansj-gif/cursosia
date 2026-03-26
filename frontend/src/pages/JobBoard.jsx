@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import toast from "react-hot-toast";
 
 export default function JobBoard() {
@@ -24,15 +25,18 @@ export default function JobBoard() {
     try {
       const { data, error } = await supabase
         .from('job_postings')
-        .select('*')
+        .select(`
+          *,
+          employer:profiles!employer_id(is_verified)
+        `)
         .eq('status', 'open')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       setJobs(data || []);
     } catch (err) {
-      console.error(err);
-      toast.error("Error al cargar ofertas de trabajo");
+      console.error("JobBoard Error:", err);
+      toast.error(`Error al cargar ofertas: ${err.message || 'Error desconocido'}`);
     } finally {
       setLoading(false);
     }

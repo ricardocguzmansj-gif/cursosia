@@ -21,11 +21,12 @@ export default function Dashboard() {
 
   const loadDashboard = async () => {
     try {
-      const [dashboardData, userRole] = await Promise.all([
+      const [dashboardData, userRole, pathsData] = await Promise.all([
         api.getDashboardData(),
-        api.getUserRole()
+        api.getUserRole(),
+        api.getPublishedPaths()
       ]);
-      setData(dashboardData);
+      setData({ ...dashboardData, paths: pathsData });
       setRole(userRole);
       
       if (dashboardData && dashboardData.profile && !dashboardData.profile.onboarding_completed) {
@@ -114,11 +115,10 @@ export default function Dashboard() {
     );
   }
 
-  const { profile, enrollments = [], progress = [] } = data;
+  const { profile, enrollments = [], progress = [], paths = [] } = data;
 
   // Process data for the UI
   const totalCourses = enrollments?.length || 0;
-  const completedLessons = progress?.length || 0;
   
   const coursesWithProgress = enrollments.map(en => {
     const course = en.courses;
@@ -131,8 +131,29 @@ export default function Dashboard() {
     const completedInCourse = progress.filter(p => p && p.course_id === course?.id).length;
     const percent = totalInCourse > 0 ? Math.round((completedInCourse / totalInCourse) * 100) : 0;
     const isOwner = en.source === 'free' && course?.user_id === profile.id;
-    return { ...course, percent, totalInCourse, completedInCourse, isOwner };
+    return { ...course, percent, totalInCourse, completedInCourse, isOwner, rawEnrollmentId: en.id };
   }).filter(Boolean); // Remove null items
+
+  // Active Paths Calculation
+  // A path is active if the user is enrolled in at least one course of that path
+  const activePaths = paths.map(path => {
+    const totalCoursesInPath = path.path_courses?.length || 0;
+    let completedCoursesInPath = 0;
+    let isActive = false;
+    
+    path.path_courses?.forEach(pc => {
+      const course = coursesWithProgress.find(c => c.id === pc.courses.id);
+      if (course) {
+        isActive = true;
+        if (course.percent >= 100) {
+          completedCoursesInPath++;
+        }
+      }
+    });
+
+    const percent = totalCoursesInPath > 0 ? Math.round((completedCoursesInPath / totalCoursesInPath) * 100) : 0;
+    return { ...path, isActive, percent, totalCoursesInPath, completedCoursesInPath };
+  }).filter(p => p.isActive);
 
   // Real Activity: compute from progress completed_at dates (last 7 days)
   const dayNames = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
@@ -200,10 +221,48 @@ export default function Dashboard() {
               </div>
             </section>
 
+            {/* Rutas de Estudio Activas */}
+            {activePaths.length > 0 && (
+              <section className="courses-section" style={{ marginTop: "2rem" }}>
+                <div className="section-header">
+                  <h2>Mis Rutas</h2>
+                  <Link to="/paths" className="btn-link">Ver todas</Link>
+                </div>
+                <div className="dashboard-courses-list">
+                  {activePaths.map(path => (
+                    <div key={path.id} className="dash-course-card glass" onClick={() => navigate(`/paths/${path.slug}`)} style={{ borderLeft: "4px solid var(--accent)" }}>
+                      <div className="dash-course-content">
+                        <div className="dash-course-info">
+                          <span className="badge badge-level">Ruta</span>
+                          <h3>{path.badge_icon || "🗺️"} {path.title}</h3>
+                          <p>{path.description}</p>
+                        </div>
+                        <div className="dash-course-progress">
+                          <div className="progress-info">
+                            <span>{path.percent}% completado</span>
+                            <span>{path.completedCoursesInPath}/{path.totalCoursesInPath} Cursos</span>
+                          </div>
+                          <div className="progress-bar-bg">
+                            <div className="progress-bar-fill" style={{ width: `${path.percent}%`, background: "var(--accent)" }}></div>
+                          </div>
+                        </div>
+                        <div className="dash-course-actions">
+                          <button className="btn btn-accent btn-sm" onClick={(e) => { e.stopPropagation(); navigate(`/paths/${path.slug}`); }}>
+                            Ver Ruta
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* Listado de Cursos con Progreso */}
-            <section className="courses-section">
+            <section className="courses-section" style={{ marginTop: "2rem" }}>
               <div className="section-header">
-                <h2>Mis Cursos</h2>
+                <h2>Mis Cursos Libres</h2>
+                <Link to="/catalog" className="btn-link">Explorar Catálogo</Link>
               </div>
               
               <div className="dashboard-courses-list">

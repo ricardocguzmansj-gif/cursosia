@@ -925,5 +925,79 @@ export const api = {
 
     if (error) throw error;
     return data;
+  },
+
+  // ========== LEARNING PATHS ==========
+  getPublishedPaths: async () => {
+    const { data, error } = await supabase
+      .from("learning_paths")
+      .select(`
+        *,
+        path_courses (
+          sequence_order,
+          courses (id, title, topic, level, image_url)
+        )
+      `)
+      .eq("is_published", true)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    // Sort courses by sequence
+    return data.map(path => {
+      if (path.path_courses) {
+        path.path_courses.sort((a, b) => a.sequence_order - b.sequence_order);
+      }
+      return path;
+    });
+  },
+
+  getPathBySlug: async (slug) => {
+    const { data, error } = await supabase
+      .from("learning_paths")
+      .select(`
+        *,
+        path_courses (
+          sequence_order,
+          courses (*)
+        )
+      `)
+      .eq("slug", slug)
+      .single();
+    if (error) throw error;
+    if (data.path_courses) {
+      data.path_courses.sort((a, b) => a.sequence_order - b.sequence_order);
+    }
+    return data;
+  },
+
+  // ========== COURSE COMMENTS (FASE 3) ==========
+  getCourseComments: async (courseId, unitIndex, lessonIndex) => {
+    const { data, error } = await supabase
+      .from("course_comments")
+      .select("*, profiles(full_name)")
+      .eq("course_id", courseId)
+      .eq("unit_index", unitIndex)
+      .eq("lesson_index", lessonIndex)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  addCourseComment: async (courseId, unitIndex, lessonIndex, content) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("No autenticado");
+
+    const { data, error } = await supabase
+      .from("course_comments")
+      .insert({
+        course_id: courseId,
+        unit_index: unitIndex,
+        lesson_index: lessonIndex,
+        user_id: user.id,
+        content
+      })
+      .select("*, profiles(full_name)")
+      .single();
+    if (error) throw error;
+    return data;
   }
 };

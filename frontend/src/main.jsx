@@ -64,6 +64,8 @@ const JobApplications = React.lazy(() => import("./pages/JobApplications"));
 const Workspace = React.lazy(() => import("./pages/Workspace"));
 const CompanyAuth = React.lazy(() => import("./pages/CompanyAuth"));
 const Quality = React.lazy(() => import("./pages/Quality"));
+const PathsList = React.lazy(() => import("./pages/PathsList"));
+const PathDetail = React.lazy(() => import("./pages/PathDetail"));
 
 function ProtectedRoute({ session, children }) {
   if (!session) return <Navigate to="/login" replace />;
@@ -193,6 +195,22 @@ function App() {
           }
         />
         {/* Public routes */}
+        <Route
+          path="/paths"
+          element={
+            <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+              <PathsList />
+            </React.Suspense>
+          }
+        />
+        <Route
+          path="/paths/:slug"
+          element={
+            <React.Suspense fallback={<div className="loading-spinner" style={{ margin: "4rem auto" }}></div>}>
+              <PathDetail />
+            </React.Suspense>
+          }
+        />
         <Route
           path="/course/:id"
           element={

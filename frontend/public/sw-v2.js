@@ -40,21 +40,25 @@ self.addEventListener('fetch', (event) => {
 
   // Stale-While-Revalidate strategy
   event.respondWith(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.match(event.request).then((cached) => {
-        const fetchedPromise = fetch(event.request).then((networkResponse) => {
+    (async () => {
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        const cached = await cache.match(event.request);
+        
+        const fetchedPromise = fetch(event.request).then(async (networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             cache.put(event.request, networkResponse.clone());
           }
           return networkResponse;
         }).catch(() => {
-          // If offline and no cache, return a generic 503
-          return cached ? cached : new Response('Offline', { status: 503 });
+          return cached || new Response('Offline', { status: 503 });
         });
 
-        // Always return cached first if exists, otherwise wait for network
         return cached || fetchedPromise;
-      });
-    })
+      } catch (err) {
+        console.error('SW Error:', err);
+        return new Response('Internal Service Worker Error', { status: 500 });
+      }
+    })()
   );
 });
